@@ -4,6 +4,21 @@ import { readFileSync } from "node:fs";
 
 export const BASE = process.env.SITE_BASE ?? "/";
 
+const readText = (url) => {
+  try {
+    return readFileSync(url, "utf8").trim();
+  } catch {
+    return "";
+  }
+};
+
+// CNAME binds the artifact to a domain of its own, and under a domain the site is top level: a build for any
+// other base 404s every asset the moment it is served there. Pages' API lags a domain change, so the file in
+// the repo is what says where this site is served from.
+export const CNAME = readText(new URL("../CNAME", import.meta.url));
+
+export const baseProblem = (base) => (CNAME !== "" && prefix(base) !== "/" ? `CNAME binds this site to ${CNAME}, where it is served at the root: a base of ${base} leaves every asset 404` : undefined);
+
 export const STATIC_ROOTS = { "keycard_shell/": "src/", "admin/img/": "src/img/" };
 
 export const URLS = {

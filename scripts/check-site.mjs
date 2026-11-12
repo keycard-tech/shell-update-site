@@ -3,12 +3,21 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DB_MAGIC, databaseMagic, databaseVersion, firmwareVersion, readUnits, sha256 } from "./binfmt.mjs";
-import { ARTIFACTS, PAGES, URLS, PAGE_DOCUMENTS, UNITS_VERIFY_KEY, artifactsOf, at, linkOf, prefix } from "./site.mjs";
+import { ARTIFACTS, PAGES, URLS, PAGE_DOCUMENTS, UNITS_VERIFY_KEY, artifactsOf, at, baseProblem, linkOf, prefix } from "./site.mjs";
 import { listen } from "./serve-site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = resolve(ROOT, process.argv.includes("--dist") ? process.argv[process.argv.indexOf("--dist") + 1] : "dist");
 const BASE = prefix(process.env.SITE_BASE ?? "/");
+
+// Build and check read the same SITE_BASE, so a wrong one is self-consistent and every asset would still
+// resolve here while 404ing on the domain the artifact is bound to.
+const baseMismatch = baseProblem(BASE);
+
+if (baseMismatch !== undefined) {
+  console.error(baseMismatch);
+  process.exit(1);
+}
 
 const { origin, close } = await listen({ dir: DIST, base: BASE });
 

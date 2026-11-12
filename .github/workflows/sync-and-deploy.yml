@@ -30,21 +30,16 @@ jobs:
           node-version: 22
           cache: npm
       - name: site base
-        # Pages serves the repository under /<repo>/ until the domain in CNAME takes over; assets 404 if wrong.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OVERRIDE: ${{ vars.SITE_BASE }}
+        # A CNAME means the site has a domain of its own and is served at its root; without one, Pages serves
+        # the repository under /<repo>/. Pages' API lags a domain change by as long as this site has been live,
+        # so nothing reads it here — and `npm run check` refuses a base that contradicts the CNAME.
         run: |
-          cname=$(cat CNAME)
-          domain=$(gh api "repos/$GITHUB_REPOSITORY/pages" -q .custom_domain 2>/dev/null || true)
+          cname=$([ -f CNAME ] && tr -d '[:space:]' < CNAME)
 
-          if [ -n "$OVERRIDE" ]; then base=$OVERRIDE
-          elif [ "$domain" = "$cname" ]; then base=/
-          else base="/${GITHUB_REPOSITORY#*/}/"
-          fi
+          if [ -n "$cname" ]; then base=/; else base="/${GITHUB_REPOSITORY#*/}/"; fi
 
           echo "SITE_BASE=$base" >> "$GITHUB_ENV"
-          echo "Pages custom domain ${domain:-none}, CNAME $cname: building for $base"
+          echo "CNAME ${cname:-none}: building for $base"
       - run: npm ci
       - run: npm run build
         env:

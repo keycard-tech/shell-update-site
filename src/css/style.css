@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
 
 /* Vars */
 :root {
@@ -8,10 +6,10 @@
     --text-bold: 700;
     --header-line-height: 40px;
     --page-header-line-height: 56px;
-    --text-font-inter: 'Inter', 'Monaco', monospace;
-    --text-font-lora: 'Lora', 'Courier New', monospace;
-    --text-font-weight: 300;
-    --text-font-weight-500: 500;
+    --text-font-inter: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
+    --text-font-lora: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
+    --text-font-weight: 400;
+    --text-font-weight-500: 600;
     --text-48: 48px;
     --text-32: 32px;
     --text-31: 31px;
@@ -2801,3 +2799,8 @@ body {
     .keycard_shell__update-prompt-container { width: auto; max-width: 340px; height: auto; }
     .keycard_shell__start-update-text-container { margin-top: -96px; }
 }
+
+/* ==== One typeface for the whole site: titles in bold, as on keycard.tech ==== */
+.keycard_shell__h2, .keycard_shell__h3, .keycard_shell__page-heading, .keycard_shell__ag_update_step-heading,
+.keycard_shell__fw-version-content, .keycard_shell__db-version-heading { font-weight: 700; letter-spacing: -0.03em; }
+.keycard_shell__mobile-menu-element-link, .keycard-shell__mobile_submenu-element-link { font-weight: 600; letter-spacing: -0.02em; }

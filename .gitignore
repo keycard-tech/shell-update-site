@@ -7,3 +7,6 @@ pages/
 
 # npm start: parcel watch output, plus the link to pages/media
 .parcel-dev/
+
+# maintainer notes, not part of the published site
+docs/*.md

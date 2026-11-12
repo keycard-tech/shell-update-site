@@ -53,8 +53,7 @@ async function renderPage(page) {
   return { html: resolveTags(await expandIncludes(merged), depth), title: (defined.get("title") ?? "").trim() };
 }
 
-// pages/media holds the mirrored artifacts, so rendering must not clear pages/: a sync that fails after
-// this point would otherwise leave the site with no firmware and no database. npm run clean does that.
+// Pages are overwritten, never cleared with the directory: pages/media holds the mirrored artifacts inside it.
 for (const page of PAGES) {
   const { html, title } = await renderPage(page);
 

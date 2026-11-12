@@ -1,23 +1,12 @@
 // GitHub serves release assets without CORS headers, so the bytes a page flashes are mirrored at build time.
 
-import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DB_FORMAT, DB_MAGIC, SIG_SIZE, databaseFormat, databaseMagic, databaseVersion, firmwareFlags, firmwareVersion, flashImage, sha256 } from "./binfmt.mjs";
 import { ARTIFACTS } from "./site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-
-// Shell flash geometry, from keycard-shell/tools/common.py and stm32/Core/Inc/stm32.h.
-const PAGE_SIZE = 8192;
-const FW_PAGE_COUNT = 76;
-const FW_IV_SIZE = 588;
-const SIG_SIZE = 64;
-// The header is the signature over the image, then four version bytes: major, minor, patch, flags.
-const FW_VERSION_OFFSET = FW_IV_SIZE + SIG_SIZE;
-// keycard-eth-db/tools/shell-db.py opens the database with struct.pack("<HHI", 0x4532, 4, version).
-const DB_MAGIC = 0x4532;
-const DB_FORMAT = 4;
 
 // A release carries other images (bootloader, dev, btc-only); the pattern is the one that gets flashed.
 const RELEASES = {
@@ -28,7 +17,7 @@ const RELEASES = {
     checksum: (asset) => asset.name,
     flashHash: flashImage,
     file: ARTIFACTS.firmware,
-    readVersion: firmwareVersion,
+    readVersion: releaseFirmware,
   },
   database: {
     repo: "keycard-tech/keycard-eth-db",
@@ -37,29 +26,23 @@ const RELEASES = {
     checksum: () => "db.bin",
     flashHash: (bytes) => sha256(bytes.subarray(0, bytes.length - SIG_SIZE)),
     file: ARTIFACTS.database,
-    readVersion: databaseVersion,
+    readVersion: releaseDatabase,
   },
 };
 
 const DATABASE_ZIP = /^db-(\d{8})-reproduction\.zip$/;
 
-const args = process.argv.slice(2);
-const arg = (name, fallback) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : fallback);
-
-const MIRROR = resolve(ROOT, arg("media", "pages/media"));
-// A sync that fails halfway must not cost the site the artifacts it already had, so the new mirror is
-// built in a sibling directory and swapped in only after every release was downloaded and verified.
-const MEDIA = `${MIRROR}.tmp`;
-const DRY_RUN = args.includes("--dry-run");
-
-// Upstream publishes a release from more than one job, so the checksum file can arrive minutes after the
-// image it certifies.
+// Upstream uploads a release from more than one job, so the file certifying an image can turn up minutes later.
 const UPLOAD_ATTEMPTS = Number(process.env.SYNC_UPLOAD_ATTEMPTS ?? 5);
 const UPLOAD_DELAY_MS = Number(process.env.SYNC_UPLOAD_DELAY_SECONDS ?? 60) * 1000;
 
-// Releases that could not be verified, recorded in sync.json: the site is meant to keep serving the last
-// complete release rather than stop.
-const incomplete = [];
+const args = process.argv.slice(2);
+const arg = (name, fallback) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : fallback);
+
+// The new mirror is assembled in STAGING and swapped into MIRROR only once it verifies, so a failed run keeps the old one.
+const MIRROR = resolve(ROOT, arg("media", "pages/media"));
+const STAGING = `${MIRROR}.tmp`;
+const DRY_RUN = args.includes("--dry-run");
 
 const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
 let rateLimited = false;
@@ -82,6 +65,7 @@ async function request(url, accept = "application/vnd.github+json") {
 
     throw new Error(`${response.status} ${response.statusText} for ${url}${hint}`);
   }
+
   return response;
 }
 
@@ -89,33 +73,34 @@ const json = async (url) => request(url).then((r) => r.json());
 const text = async (url) => request(url, "text/plain").then((r) => r.text());
 const bytes = async (url) => request(url, "application/octet-stream").then((r) => r.arrayBuffer().then((b) => Buffer.from(b)));
 
-const sha256 = (data) => createHash("sha256").update(data).digest("hex");
+const sleep = (ms) => new Promise((wait) => setTimeout(wait, ms));
 
-// The digest the bootloader verifies and the releases publish: not a plain sha256sum of the file.
-function flashImage(bytes) {
-  const image = Buffer.alloc(PAGE_SIZE * FW_PAGE_COUNT, 0xff);
-  bytes.copy(image);
-
-  return sha256(Buffer.concat([image.subarray(0, FW_IV_SIZE), image.subarray(FW_IV_SIZE + SIG_SIZE)]));
-}
-
-function firmwareVersion(bytes) {
-  const [major, minor, patch, flags] = bytes.subarray(FW_VERSION_OFFSET, FW_VERSION_OFFSET + 4);
+// What the site offers is a release build: not a beta or a variant, and a real Shell database.
+function releaseFirmware(image) {
+  const flags = firmwareFlags(image);
 
   if (flags !== 0) throw new Error(`image is a beta or variant build (flags byte ${flags}), not the release the site offers`);
 
-  return `${major}.${minor}.${patch}`;
+  return firmwareVersion(image);
 }
 
-function databaseVersion(bytes) {
-  if (bytes.readUInt16LE(0) !== DB_MAGIC) throw new Error(`file starts with magic ${bytes.readUInt16LE(0).toString(16)}, not the Shell database magic 0x4532`);
+function releaseDatabase(file) {
+  const magic = databaseMagic(file);
 
-  const format = bytes.readUInt16LE(2);
+  if (magic !== DB_MAGIC) throw new Error(`file starts with magic ${magic.toString(16)}, not the Shell database magic 0x4532`);
+
+  const format = databaseFormat(file);
 
   if (format !== DB_FORMAT) console.warn(`database format is ${format}, this script expects ${DB_FORMAT}`);
 
-  return String(bytes.readUInt32LE(4));
+  return databaseVersion(file);
 }
+
+const versionOf = (tag) => tag.replace(/^v/, "");
+const assetIn = (release, pattern) => (release.assets ?? []).filter((asset) => pattern.test(asset.name));
+
+// keycard-shell-webapp stored timestamps as '%Y-%m-%d %H:%M' and the page scripts re-parse that shape.
+const timestamp = (iso) => iso.slice(0, 16).replace("T", " ");
 
 async function releases(kind) {
   const all = await json(`https://api.github.com/repos/${RELEASES[kind].repo}/releases?per_page=100`);
@@ -126,13 +111,9 @@ async function releases(kind) {
   return published;
 }
 
-const versionOf = (tag) => tag.replace(/^v/, "");
+const releaseByTag = (kind, tag) => json(`https://api.github.com/repos/${RELEASES[kind].repo}/releases/tags/${tag}`);
 
-const assetIn = (release, pattern) => (release.assets ?? []).filter((a) => pattern.test(a.name));
-
-// keycard-shell-webapp stored timestamps as '%Y-%m-%d %H:%M' and the page scripts re-parse that shape.
-const timestamp = (iso) => iso.slice(0, 16).replace("T", " ");
-
+// The hash the release publishes for this artifact, or undefined if the release does not publish one for it.
 async function publishedChecksum(release, name) {
   const [file] = assetIn(release, /-sha256\.txt$/);
 
@@ -146,26 +127,44 @@ async function publishedChecksum(release, name) {
   return lines.find(([, entry]) => entry === name)?.[0];
 }
 
-// What a release has to offer to be mirrored: the image, and a published checksum that names it. Either can
-// be missing simply because upstream uploads a release from more than one job.
+// To be mirrored a release needs the image and a published checksum naming it.
 async function readiness(kind, release) {
   const [asset] = assetIn(release, RELEASES[kind].match);
 
-  if (asset === undefined) return { reason: "no image asset" };
-  if (assetIn(release, /-sha256\.txt$/).length === 0) return { reason: "publishes no sha256 file" };
+  if (asset === undefined) return { ok: false, reason: "no image asset" };
+  if (assetIn(release, /-sha256\.txt$/).length === 0) return { ok: false, reason: "publishes no sha256 file" };
 
   const published = await publishedChecksum(release, RELEASES[kind].checksum(asset));
 
-  return published === undefined ? { reason: `${asset.name} is not in the published sha256 file` } : { asset, published };
+  return published === undefined
+    ? { ok: false, reason: `${asset.name} is not in the published sha256 file` }
+    : { ok: true, asset, published };
 }
 
-const sleep = (ms) => new Promise((wait) => setTimeout(wait, ms));
+// A release that has some files but not the ones needed is most likely still being uploaded.
+const uploadStarted = (release) => (release.assets ?? []).length > 0;
 
-// A release that has started to publish files but is not complete yet is most likely still being uploaded.
-const uploading = (release) => (release.assets ?? []).length > 0;
+async function awaitUpload(kind, release, retries) {
+  let ready = await readiness(kind, release);
 
-// A published checksum that disagrees with the artifact is tampering or corruption and stops the build; a
-// missing file only means the release cannot be verified, so the previous complete one is used instead.
+  for (let attempt = 1; !ready.ok && uploadStarted(release) && attempt <= retries; attempt++) {
+    console.warn(`${release.tag_name}: ${ready.reason}, waiting ${UPLOAD_DELAY_MS / 1000}s for the upload (${attempt}/${retries})`);
+    await sleep(UPLOAD_DELAY_MS);
+    release = await releaseByTag(kind, release.tag_name);
+    ready = await readiness(kind, release);
+  }
+
+  return { release, ready };
+}
+
+// A checksum that disagrees is corruption and stops the run; a missing file only means the release is unverifiable.
+const write = async (file, data) => {
+  await mkdir(dirname(join(STAGING, file)), { recursive: true });
+  await writeFile(join(STAGING, file), data);
+};
+
+const writeJson = (file, value) => write(file, `${JSON.stringify(value, null, 2)}\n`);
+
 async function verifyAndWrite(kind, release, asset, published) {
   const artifact = RELEASES[kind];
   const data = await bytes(asset.browser_download_url);
@@ -183,57 +182,38 @@ async function verifyAndWrite(kind, release, asset, published) {
   return { version, tag: release.tag_name, release: release.html_url, asset: asset.name, size: asset.size, hash: sha256(data), flash_hash: flashHash };
 }
 
-// Walks the releases newest first and mirrors the first that can be verified. Only the newest one is waited
-// for, because anything older either finished or never will.
+// Newest first: mirror the first release that verifies, report the ones passed over, wait only on the newest.
 async function mirrorLatest(kind, published) {
-  const repo = RELEASES[kind].repo;
+  const skipped = [];
 
   for (const [index, tagged] of published.entries()) {
-    let release = tagged;
-    let ready = await readiness(kind, release);
+    const { release, ready } = await awaitUpload(kind, tagged, index === 0 ? UPLOAD_ATTEMPTS : 0);
 
-    for (let attempt = 1; "reason" in ready && index === 0 && uploading(release) && attempt <= UPLOAD_ATTEMPTS; attempt++) {
-      console.warn(`${release.tag_name}: ${ready.reason}, waiting ${UPLOAD_DELAY_MS / 1000}s for the upload (${attempt}/${UPLOAD_ATTEMPTS})`);
-      await sleep(UPLOAD_DELAY_MS);
-      release = await json(`https://api.github.com/repos/${repo}/releases/tags/${tagged.tag_name}`);
-      ready = await readiness(kind, release);
-    }
-
-    if ("reason" in ready) {
+    if (!ready.ok) {
       console.warn(`${release.tag_name}: ${ready.reason}, not mirrored`);
-      incomplete.push({ kind, tag: release.tag_name, reason: ready.reason });
+      skipped.push({ kind, tag: release.tag_name, reason: ready.reason });
       continue;
     }
 
-    return { ...(await verifyAndWrite(kind, release, ready.asset, ready.published)), index, releaseObject: release };
+    return { current: await verifyAndWrite(kind, release, ready.asset, ready.published), release, index, skipped };
   }
 
-  return null;
+  return { current: null, skipped };
 }
 
-const write = async (file, data) => {
-  await mkdir(dirname(join(MEDIA, file)), { recursive: true });
-  await writeFile(join(MEDIA, file), data);
-};
-
-const writeJson = (file, value) => write(file, `${JSON.stringify(value, null, 2)}\n`);
-
-// What sync.json keeps about a mirrored artifact, without the bookkeeping mirrorLatest carries along.
-const publishedFields = ({ index, releaseObject, ...fields }) => fields;
-
-// The newest release is re-read while waiting for its upload, so its changelog comes from that reading.
-const releasesFrom = (published, mirrored) =>
-  published.slice(mirrored.index).map((release) => (release.tag_name === mirrored.tag ? mirrored.releaseObject : release));
+// The history starts at the mirrored release, whose freshest reading is the one that was verified.
+const releasesBelow = (published, mirrored) =>
+  published.slice(mirrored.index).map((release) => (release.tag_name === mirrored.release.tag_name ? mirrored.release : release));
 
 async function syncFirmware() {
   const published = await releases("firmware");
-  const current = await mirrorLatest("firmware", published);
+  const mirrored = await mirrorLatest("firmware", published);
 
-  if (current === null) throw new Error(`no release of ${RELEASES.firmware.repo} offers a verifiable firmware image`);
+  if (mirrored.current === null) throw new Error(`no release of ${RELEASES.firmware.repo} offers a verifiable firmware image`);
 
   const notes = [];
 
-  for (const release of releasesFrom(published, current)) {
+  for (const release of releasesBelow(published, mirrored)) {
     if (assetIn(release, RELEASES.firmware.match).length === 0) continue;
 
     const version = versionOf(release.tag_name);
@@ -243,19 +223,19 @@ async function syncFirmware() {
     await write(`changelogs/${version}.md`, `${timestamp(release.published_at)}\n${(release.body ?? "").replace(/\r\n/g, "\n")}`);
   }
 
-  return { current, notes };
+  return { current: mirrored.current, skipped: mirrored.skipped, notes };
 }
 
 async function syncDatabase() {
   const repo = RELEASES.database.repo;
   const published = await releases("database");
-  const current = await mirrorLatest("database", published);
+  const mirrored = await mirrorLatest("database", published);
 
-  if (current === null) throw new Error(`no release of ${repo} offers a verifiable database`);
+  if (mirrored.current === null) throw new Error(`no release of ${repo} offers a verifiable database`);
 
   const history = [];
 
-  for (const release of releasesFrom(published, current)) {
+  for (const release of releasesBelow(published, mirrored)) {
     const version = versionOf(release.tag_name);
     const [zip] = assetIn(release, DATABASE_ZIP);
 
@@ -284,7 +264,40 @@ async function syncDatabase() {
     history.push({ zip_path: zip.browser_download_url, version, creation_date: timestamp(release.published_at), ...links });
   }
 
-  return { current, history };
+  return { current: mirrored.current, skipped: mirrored.skipped, history };
+}
+
+async function rebuild(previous) {
+  const firmware = await syncFirmware();
+  const database = await syncDatabase();
+
+  // The documents name the artifacts, so they are written once both sides are downloaded and verified.
+  await writeJson("get-firmware.json", { fw_path: RELEASES.firmware.file, version: firmware.current.version, hash: firmware.current.hash });
+  await writeJson("get-db.json", { db_path: RELEASES.database.file, hash: database.current.hash, version: database.current.version });
+  await writeJson("get-firmwares.json", firmware.notes);
+  await writeJson("get-dbs.json", database.history);
+  await writeJson("sync.json", {
+    synced_at: new Date().toISOString(),
+    firmware: firmware.current,
+    database: database.current,
+    incomplete: [...firmware.skipped, ...database.skipped],
+  });
+
+  // The old mirror moves aside rather than being deleted first, so there is never a moment with no mirror.
+  const stale = `${MIRROR}.old`;
+
+  await rm(stale, { recursive: true, force: true });
+  await rename(MIRROR, stale).catch(() => null);
+  await rename(STAGING, MIRROR);
+  await rm(stale, { recursive: true, force: true });
+
+  for (const [kind, { current }] of [["firmware", firmware], ["database", database]]) {
+    const before = previous?.[kind]?.version;
+
+    console.log(`${kind}: ${current.version}${before && before !== current.version ? ` (was ${before})` : ""} ${current.hash} ${current.asset}`);
+  }
+
+  for (const { kind, tag, reason } of [...firmware.skipped, ...database.skipped]) console.warn(`${kind}: ${tag} was not mirrored (${reason})`);
 }
 
 const previous = await readFile(join(MIRROR, "sync.json"), "utf8").then(JSON.parse).catch(() => null);
@@ -300,52 +313,15 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
-await rm(MEDIA, { recursive: true, force: true });
+await rm(STAGING, { recursive: true, force: true });
 
 try {
-  await mirror();
+  await rebuild(previous);
 } catch (err) {
-  // Only a build without credentials can run out of quota, and that limit says nothing about the releases.
-  // What is already mirrored was verified when it was written, so a rate-limited sync leaves it in place
-  // rather than refusing to build; a build that did authenticate must not tolerate it, or it would publish a
-  // stale site out of a job that was supposed to fail.
+  // Quota exhaustion is no verdict on the releases: keep the verified mirror, but never tolerate it when a token was sent.
   if (!rateLimited || token !== undefined || previous === null) throw err;
 
   console.warn(`out of quota, keeping what is mirrored: firmware ${previous.firmware.version}, database ${previous.database.version}, synced ${previous.synced_at}`);
   console.warn(`set GH_TOKEN to look for a newer release`);
   process.exit(0);
-}
-
-async function mirror() {
-  const firmware = await syncFirmware();
-  const database = await syncDatabase();
-
-  // Written last, so a page can never point at an artifact that was not verified.
-  await writeJson("get-firmware.json", { fw_path: RELEASES.firmware.file, version: firmware.current.version, hash: firmware.current.hash });
-  await writeJson("get-db.json", { db_path: RELEASES.database.file, hash: database.current.hash, version: database.current.version });
-  await writeJson("get-firmwares.json", firmware.notes);
-  await writeJson("get-dbs.json", database.history);
-  await writeJson("sync.json", {
-    synced_at: new Date().toISOString(),
-    firmware: publishedFields(firmware.current),
-    database: publishedFields(database.current),
-    incomplete,
-  });
-
-  // Renaming over the old mirror would leave a moment with no mirror at all, so the old one moves aside first.
-  const stale = `${MIRROR}.old`;
-
-  await rm(stale, { recursive: true, force: true });
-  await rename(MIRROR, stale).catch(() => null);
-  await rename(MEDIA, MIRROR);
-  await rm(stale, { recursive: true, force: true });
-
-  for (const kind of Object.keys(RELEASES)) {
-    const current = kind === "firmware" ? firmware.current : database.current;
-    const before = previous?.[kind]?.version;
-
-    console.log(`${kind}: ${current.version}${before && before !== current.version ? ` (was ${before})` : ""} ${current.hash} ${current.asset}`);
-  }
-
-  for (const { kind, tag, reason } of incomplete) console.warn(`${kind}: ${tag} was not mirrored (${reason})`);
 }

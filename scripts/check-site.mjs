@@ -1,10 +1,9 @@
-// Serves dist/ the way GitHub Pages does and walks every page, link, asset and artifact it references.
-// A page is only correct if the URL a visitor follows is the one that renders it.
+// Walks a built site through the Pages server: a page is only correct if the URL a visitor follows renders it.
 
-import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PAGES, URLS, at, linkOf, prefix } from "./site.mjs";
+import { DB_MAGIC, databaseMagic, databaseVersion, firmwareVersion, sha256 } from "./binfmt.mjs";
+import { PAGES, URLS, UPDATES, at, linkOf, prefix } from "./site.mjs";
 import { listen } from "./serve-site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -34,13 +33,15 @@ const refsIn = (html) =>
     .map(([, , quoted, bare]) => quoted ?? bare)
     .filter((ref) => ref !== undefined && !/^(https?:|mailto:|javascript:|#|data:)/.test(ref) && ref !== "");
 
-const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+// Reported rather than thrown, so one bad artifact does not hide the state of the rest of the site.
+const versionInside = (kind, bytes) => {
+  if (kind === "firmware") return firmwareVersion(bytes);
+  if (databaseMagic(bytes) !== DB_MAGIC) return "bad magic";
 
-// The same reads the sync makes: keycard-shell/tools/firmware-hash.py and keycard-eth-db/tools/shell-db.py.
-const firmwareVersion = (bytes) => [...bytes.subarray(652, 655)].join(".");
-const databaseVersion = (bytes) => (bytes.readUInt16LE(0) === 0x4532 ? String(bytes.readUInt32LE(4)) : "bad magic");
+  return databaseVersion(bytes);
+};
 
-const media = new Map();
+const documents = new Map();
 
 for (const page of PAGES) {
   const link = linkOf(page);
@@ -60,12 +61,12 @@ for (const page of PAGES) {
   const mediaPrefix = value?.[3] ?? value?.[4];
 
   if (mediaPrefix !== undefined) {
-    for (const name of ["get-firmware.json", "get-db.json"]) {
-      const document = await get(new URL(mediaPrefix + name, landed.url).href);
+    for (const { document } of UPDATES) {
+      const fetched = await get(new URL(mediaPrefix + document, landed.url).href);
 
-      if (document.status !== 200) fail(link, `${document.status} ${mediaPrefix + name}`);
+      if (fetched.status !== 200) fail(link, `${fetched.status} ${mediaPrefix + document}`);
       // fw_path and db_path are relative to the JSON, not to the page that fetched it.
-      else media.set(name, { at: document.url, ...JSON.parse(Buffer.from(await document.body()).toString()) });
+      else documents.set(document, { at: fetched.url, ...JSON.parse(Buffer.from(await fetched.body()).toString()) });
     }
   }
 
@@ -79,19 +80,19 @@ for (const [name, path] of Object.entries(URLS)) {
   else console.log(`url ${name} -> ${landed.url.slice(origin.length)}`);
 }
 
-for (const [name, key] of [["get-firmware.json", "fw_path"], ["get-db.json", "db_path"]]) {
-  const document = media.get(name);
+for (const { kind, document, key } of UPDATES) {
+  const read = documents.get(document);
 
-  if (document === undefined) fail(name, "never fetched by any page");
+  if (read === undefined) fail(document, "never fetched by any page");
   else {
-    const artifact = await get(new URL(document[key], document.at).href);
+    const artifact = await get(new URL(read[key], read.at).href);
     const bytes = Buffer.from(await artifact.body());
-    const inside = name === "get-firmware.json" ? firmwareVersion(bytes) : databaseVersion(bytes);
+    const inside = versionInside(kind, bytes);
 
-    console.log(`${name}: ${document.version} ${sha256(bytes).slice(0, 16)}… ${bytes.length} bytes, in-bin ${inside}`);
+    console.log(`${document}: ${read.version} ${sha256(bytes).slice(0, 16)}… ${bytes.length} bytes, in-bin ${inside}`);
 
-    if (artifact.status !== 200) fail(name, `${artifact.status} for ${document[key]}`);
-    if (String(document.version) !== inside) fail(name, `version ${document.version} is not the version in ${document[key]}`);
+    if (artifact.status !== 200) fail(document, `${artifact.status} for ${read[key]}`);
+    if (String(read.version) !== inside) fail(document, `version ${read.version} is not the version in ${read[key]}`);
   }
 }
 

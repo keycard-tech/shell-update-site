@@ -20,11 +20,6 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-# The path the site is served from. "/" because dist/CNAME puts it on a domain of its own; set it to
-# /shell-update-site/ to preview on the project page instead.
-env:
-  SITE_BASE: /
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,6 +29,22 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: site base
+        # Pages serves the repository under /<repo>/ until the domain in CNAME takes over; assets 404 if wrong.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OVERRIDE: ${{ vars.SITE_BASE }}
+        run: |
+          cname=$(cat CNAME)
+          domain=$(gh api "repos/$GITHUB_REPOSITORY/pages" -q .custom_domain 2>/dev/null || true)
+
+          if [ -n "$OVERRIDE" ]; then base=$OVERRIDE
+          elif [ "$domain" = "$cname" ]; then base=/
+          else base="/${GITHUB_REPOSITORY#*/}/"
+          fi
+
+          echo "SITE_BASE=$base" >> "$GITHUB_ENV"
+          echo "Pages custom domain ${domain:-none}, CNAME $cname: building for $base"
       - run: npm ci
       - run: npm run build
         env:

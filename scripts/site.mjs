@@ -1,5 +1,4 @@
-// The site's URL tree: the one place a page path, a link target or the media prefix is written.
-// Pages are laid out as keycard-shell-webapp served them, so a link that worked there works here.
+// The site's URL tree: the one place a page path, a link target, the media prefix or the site base is written.
 
 export const BASE = process.env.SITE_BASE ?? "/";
 
@@ -28,6 +27,12 @@ export const MEDIA = "media/";
 // The mirror the pages read: the two artifacts under names that never change, and the documents that name them.
 export const ARTIFACTS = { firmware: "firmware.bin", database: "db.bin" };
 export const DOCUMENTS = ["get-firmware.json", "get-db.json", "get-firmwares.json", "get-dbs.json", "sync.json"];
+
+// The two documents an update page reads, the artifact each names relative to itself, and their release kind.
+export const UPDATES = [
+  { kind: "firmware", document: "get-firmware.json", key: "fw_path", artifact: ARTIFACTS.firmware },
+  { kind: "database", document: "get-db.json", key: "db_path", artifact: ARTIFACTS.database },
+];
 
 export const at = (path) => (BASE.endsWith("/") ? BASE + path : `${BASE}/${path}`);
 

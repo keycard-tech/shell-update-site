@@ -1,7 +1,4 @@
-// Serves a directory the way GitHub Pages serves a site: index.html inside a path, and a 301 from a
-// directory to its trailing-slash form. `npm start` is no substitute for this: the Parcel dev server answers
-// a path it does not know with index.html and status 200, so the documents and artifacts that the update
-// pages fetch at runtime come back as HTML, and JSON.parse reports `Unexpected token '<'`.
+// Serves a directory as GitHub Pages does: index.html inside a path, 301 to the trailing-slash form otherwise.
 
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";

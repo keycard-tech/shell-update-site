@@ -1,9 +1,4 @@
-// npm start: Parcel rebuilds on change, and the Pages server serves what it produced.
-//
-// Parcel's own dev server cannot serve this site. It answers a path it did not build with index.html and
-// status 200, and the update pages fetch their documents and artifacts with a path assembled at runtime, so
-// through that server /media/get-firmware.json is HTML and the page reports `Unexpected token '<'`. Serving
-// a built directory instead also means the URLs a developer sees are the ones Pages will serve.
+// npm start: parcel watch plus the Pages server, because parcel serve answers unbuilt paths such as media/ with index.html.
 
 import { spawn } from "node:child_process";
 import { rm, symlink } from "node:fs/promises";
@@ -16,8 +11,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, ".parcel-dev");
 const BASE = process.env.SITE_BASE ?? "/";
 const PORT = Number(process.env.PORT ?? 1234);
-// `parcel watch` always starts a server of its own and there is no flag to turn it off. It is not the one to
-// open: it has no /media. Parcel takes 1235, this script serves the built directory on PORT.
+// `parcel watch` starts a server of its own whatever it is told, and that one has no /media: keep it off PORT.
 const PARCEL_PORT = PORT + 1;
 
 // The mirror is linked, not copied: a sync that runs later is visible without rebuilding anything.
@@ -48,10 +42,16 @@ parcel.on("exit", (code, signal) => {
 
 await linkMedia();
 
-const site = await listen({ dir: DIST, base: BASE, port: PORT });
+const site = await listen({ dir: DIST, base: BASE, port: PORT }).catch((err) => {
+  if (err.code !== "EADDRINUSE") throw err;
+
+  console.error(`port ${PORT} is taken; start with PORT=1240 npm start`);
+  parcel.kill();
+  process.exit(1);
+});
 
 console.log(`dev site at ${site.origin}${prefix(BASE)} — rebuilds on change, Ctrl-C to stop`);
-console.log(`ignore http://localhost:${PARCEL_PORT}, that is parcel watch's own server and it has no media/`);
+console.log(`not http://localhost:${PARCEL_PORT}: that is parcel watch's own server, and it has no media/`);
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {

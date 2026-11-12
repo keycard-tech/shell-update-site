@@ -12,11 +12,12 @@
     "pages/release-notes.html"
   ],
   "scripts": {
+    "clean": "rm -rf dist pages .parcel-cache",
     "render": "node scripts/render-pages.mjs",
     "sync": "node scripts/sync-upstream.mjs",
     "prestart": "npm run render && npm run sync",
     "start": "parcel pages/index.html",
-    "prebuild": "rm -rf dist && npm run render && npm run sync",
+    "prebuild": "npm run clean && npm run render && npm run sync",
     "build": "parcel build --no-source-maps --public-url ./",
     "postbuild": "rm -rf dist/media && cp -r pages/media dist/media && touch dist/.nojekyll",
     "typecheck": "tsc --noEmit"

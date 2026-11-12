@@ -18,29 +18,28 @@ const FW_VERSION_OFFSET = FW_IV_SIZE + SIG_SIZE;
 const DB_MAGIC = 0x4532;
 const DB_FORMAT = 4;
 
-// Hand-named assets, matched not trusted; the firmware pattern skips bootloader, dev and btc-only images.
+// A release carries other images (bootloader, dev, btc-only); the pattern is the one that gets flashed.
 const RELEASES = {
   firmware: {
     repo: "keycard-tech/keycard-shell",
     match: /^shellos-\d{8}-(\d+\.\d+\.\d+)\.bin$/,
-    // The release's sha256 file lists this asset by its uploaded name and hashes the flashed image.
+    // Its sha256 file lists the asset by uploaded name.
     checksum: (asset) => asset.name,
-    hash: flashImage,
+    flashHash: flashImage,
     file: "firmware.bin",
     readVersion: firmwareVersion,
   },
   database: {
     repo: "keycard-tech/keycard-eth-db",
     match: /^shelldb-(\d{8})\.bin$/,
-    // That repo's sha256 file lists the file as it was built (db.bin), not as it was uploaded.
+    // Its sha256 file lists the file as built (db.bin), not as uploaded (shelldb-<date>.bin).
     checksum: () => "db.bin",
-    hash: (bytes) => sha256(bytes.subarray(0, bytes.length - SIG_SIZE)),
+    flashHash: (bytes) => sha256(bytes.subarray(0, bytes.length - SIG_SIZE)),
     file: "db.bin",
     readVersion: databaseVersion,
   },
 };
 
-// Downloaded by the browser, never flashed, so it is linked straight from the release.
 const DATABASE_ZIP = /^db-(\d{8})-reproduction\.zip$/;
 
 const args = process.argv.slice(2);
@@ -70,7 +69,7 @@ const bytes = async (url) => request(url, "application/octet-stream").then((r) =
 
 const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 
-// Not sha256sum of the file: firmware-hash.py hashes the image padded to flash size, minus the signature.
+// The digest the bootloader verifies and the releases publish: not a plain sha256sum of the file.
 function flashImage(bytes) {
   const image = Buffer.alloc(PAGE_SIZE * FW_PAGE_COUNT, 0xff);
   bytes.copy(image);
@@ -96,7 +95,6 @@ function databaseVersion(bytes) {
   return String(bytes.readUInt32LE(4));
 }
 
-// Drafts and prereleases never reach a device; keycard-shell-webapp only served published firmware.
 async function releases(kind) {
   const all = await json(`https://api.github.com/repos/${RELEASES[kind].repo}/releases?per_page=100`);
   const published = all.filter((release) => !release.draft && !release.prerelease);
@@ -137,17 +135,17 @@ async function mirrorLatest(kind, release) {
 
   if (data.byteLength !== asset.size) throw new Error(`${asset.name}: got ${data.byteLength} of ${asset.size} bytes`);
 
-  const hash = artifact.hash(data);
+  const flashHash = artifact.flashHash(data);
   const published = await publishedChecksum(release, artifact.checksum(asset));
   const version = artifact.readVersion(data);
 
   if (published === undefined) throw new Error(`${release.tag_name}: ${asset.name} is not in the published sha256 file`);
-  if (published !== hash) throw new Error(`${asset.name}: ${hash} does not match the published ${published}`);
+  if (published !== flashHash) throw new Error(`${asset.name}: ${flashHash} does not match the published ${published}`);
   if (version !== versionOf(release.tag_name)) throw new Error(`${asset.name}: carries version ${version}, its release is tagged ${release.tag_name}`);
 
   await write(artifact.file, data);
 
-  return { version, tag: release.tag_name, release: release.html_url, asset: asset.name, size: asset.size, hash };
+  return { version, tag: release.tag_name, release: release.html_url, asset: asset.name, size: asset.size, hash: sha256(data), flash_hash: flashHash };
 }
 
 const write = async (file, data) => {

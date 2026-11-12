@@ -63,6 +63,7 @@ const bc = new BroadcastChannel('process_channel');
 
 let isDBLatest : boolean;
 let isFWLatest: boolean;
+let restartBeforeNextStep = false;
 
 function checkLatestVersion(deviceVersion: number, webVersion: number, updateStatus: HTMLSpanElement, checkField: HTMLInputElement, container: HTMLDivElement) : boolean {
     if(webVersion <= deviceVersion) {
@@ -99,8 +100,8 @@ function handleMobileUI() : void {
     }
 }
 
-function handleTransferStart(dataLength: number, promptText: string) : void {
-    paginator.innerHTML = "1/2";
+function handleTransferStart(dataLength: number, promptText: string, step: number) : void {
+    paginator.innerHTML = `${step}/2`;
     updateProgressBar.classList.remove(hideScreenClass);
     progressPercent.classList.remove(hideScreenClass);
     updateProgressBar.max = dataLength;
@@ -123,29 +124,42 @@ function handleSuccessScreen() : void {
     pagePrompt.innerHTML = TextStr.shellDisconnectPrompt;
 }
 
-async function transferDatabase(transport: Transport | null, cmdSet: Commands | null, data: ArrayBuffer, startTransferPrompt: string, updateDBPrompt: string) : Promise<boolean> {
-    handleTransferStart(data.byteLength, startTransferPrompt);
+type Transfer = { data: ArrayBuffer; prompt: string; done: string; install: (cmdSet: Commands) => Promise<unknown> };
 
-    if(transport) {
-        UIUtils.handleUpdateLoadProgress(transport, updateProgressBar, progressPercent, () => handleTransferCompleted(updateDBPrompt));
-        await cmdSet!.loadDatabase(data);
-    }
+const firmwareTransfer = (data: ArrayBuffer, version: string) : Transfer => ({ data, prompt: TextStr.progressFWPrompt + version, done: TextStr.fwTransferedText, install: (cmdSet) => cmdSet.loadFirmware(data) });
+const databaseTransfer = (data: ArrayBuffer, version: string) : Transfer => ({ data, prompt: TextStr.progressDBPrompt + version, done: TextStr.dbTransferedText, install: (cmdSet) => cmdSet.loadDatabase(data) });
 
-    return true;
-}
-
-async function transferFirmware(transport: Transport | null, cmdSet: Commands | null, data: ArrayBuffer, startTransferPrompt: string, updateFWPrompt: string) : Promise<void> {
-    handleTransferStart(data.byteLength, startTransferPrompt);
+async function transferTo(transport: Transport | null, cmdSet: Commands | null, transfer: Transfer, step: number) : Promise<Transport | null> {
+    handleTransferStart(transfer.data.byteLength, transfer.prompt, step);
 
     if(!transport && !cmdSet) {
         transport = await TransportWebHID.create();
         cmdSet = new Commands(transport);
     }
 
-    UIUtils.handleUpdateLoadProgress(transport!, updateProgressBar, progressPercent, () => handleTransferCompleted(updateFWPrompt));
-    await cmdSet!.loadFirmware(data); 
+    UIUtils.handleUpdateLoadProgress(transport!, updateProgressBar, progressPercent, () => handleTransferCompleted(transfer.done));
+    await transfer.install(cmdSet!);
 
-    handleSuccessScreen();
+    return transport;
+}
+
+async function handleUpdateError(err: unknown, transport: Transport | null) : Promise<void> {
+    pagePrompt.innerHTML = "";
+    const activeStep = document.getElementsByClassName(activeScreenClass)[0] as HTMLDivElement;
+    if (err instanceof ShellJS.ShellError.TransportOpenUserCancelled) {
+        updateErrorMessage.innerHTML = "Error connecting to device";
+        showNextScreen(activeStep, updateFailedScreen);
+    } else {
+        updateErrorMessage.innerHTML = ((err as { statusCode?: number }).statusCode == StatusCodes.SECURITY_STATUS_NOT_SATISFIED) ? TextStr.updateCanceled:  TextStr.installationFailed;
+
+        if(updateProgressBar.value > 0) {
+          updateErrorMessage.innerHTML =  TextStr.updateFailed;
+        }
+      
+        showNextScreen(activeStep, updateFailedScreen);
+    }
+
+    await transport?.close();
 }
 
 async function handleShellUpdate() : Promise<void> {
@@ -189,7 +203,7 @@ async function handleShellUpdate() : Promise<void> {
                     transport = null;
                     cmdSet = null;
                             
-                    if(!activeStep.isEqualNode(updateSuccessScreen)) {
+                    if(!activeStep.isEqualNode(updateSuccessScreen) && !restartBeforeNextStep) {
                         updateErrorMessage.innerHTML = "Error connecting to device";
                         showNextScreen(activeStep, updateFailedScreen);
                     }
@@ -223,41 +237,44 @@ async function handleShellUpdate() : Promise<void> {
     });
 
     continueUpdateBtn.addEventListener("click", async (e) => {
-        await transferFirmware(null, null, fwData, TextStr.progressFWPrompt + fwContext["version"], TextStr.fwTransferedText);
+        restartBeforeNextStep = false;
+        let nextTransport: Transport | null = null;
+
+        try {
+            nextTransport = await transferTo(null, null, databaseTransfer(dbData, dbContext["version"]), 2);
+            handleSuccessScreen();
+        } catch(err) {
+            await handleUpdateError(err, nextTransport);
+        }
+
+        await nextTransport?.close();
         e.preventDefault();
     });
 
     transferDataBtn.addEventListener("click", async() => {
         showNextScreen(selectUpdateScreen, updateInProgressScreen);
 
+        const fwPending = fwUpdateCheckbox.checked && !isFWLatest;
+        const dbPending = dbUpdateCheckbox.checked && !isDBLatest;
+        // Writing the firmware restarts the Shell, so the drop before the database transfer is not a failure.
+        restartBeforeNextStep = fwPending && dbPending;
+
         try {
-            if(dbUpdateCheckbox.checked && !isDBLatest) {
-                let dbUpdateCompleted  = await transferDatabase(transport, cmdSet, dbData, TextStr.progressDBPrompt + dbContext["version"], TextStr.dbTransferedText);
-                if(dbUpdateCompleted && (fwUpdateCheckbox.checked && !isFWLatest)) {
-                    confirmUpdateInstructions.classList.add(hideScreenClass);
+            if(fwPending) {
+                await transferTo(transport, cmdSet, firmwareTransfer(fwData, fwContext["version"]), 1);
+
+                if(dbPending) {
                     continueUpdateBtnContainer.classList.remove(hideScreenClass);
                 } else {
                     handleSuccessScreen();
                 }
-            } else if(fwUpdateCheckbox.checked && !isFWLatest) {
-                await transferFirmware(transport, cmdSet, fwData, TextStr.progressFWPrompt + fwContext["version"], TextStr.fwTransferedText);
+            } else if(dbPending) {
+                await transferTo(transport, cmdSet, databaseTransfer(dbData, dbContext["version"]), 1);
+                handleSuccessScreen();
             }
         } catch(err) {
-            pagePrompt.innerHTML = "";
-            const activeStep = document.getElementsByClassName(activeScreenClass)[0] as HTMLDivElement;
-            if (err instanceof ShellJS.ShellError.TransportOpenUserCancelled) {
-                updateErrorMessage.innerHTML = "Error connecting to device";
-                showNextScreen(activeStep, updateFailedScreen);
-            } else {
-                updateErrorMessage.innerHTML = ((err as { statusCode?: number }).statusCode == StatusCodes.SECURITY_STATUS_NOT_SATISFIED) ? TextStr.updateCanceled:  TextStr.installationFailed;
-
-                if(updateProgressBar.value > 0) {
-                  updateErrorMessage.innerHTML =  TextStr.updateFailed;
-                }
-              
-                showNextScreen(activeStep, updateFailedScreen);
-            }
-            await transport?.close();
+            restartBeforeNextStep = false;
+            await handleUpdateError(err, transport);
         }
 
         await transport?.close();

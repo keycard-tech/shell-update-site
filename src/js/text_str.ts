@@ -1,8 +1,8 @@
 export namespace TextStr {
     export const verifyAuthenticHeading = "Your Shell is authentic";
-    export const verifyAuthenticPrompt = "This Shell signed a fresh challenge with a key that is in the list signed by the Keycard provisioning key.";
-    export const verifyNotRegisteredHeading = "Your Shell is not authentic";
-    export const verifyNotRegisteredPrompt = "No row matches this key. Contact us in Discord to go through the process together.";
+    export const verifyAuthenticPrompt = "Your Shell completed the verification correctly and is on our produced units list.";
+    export const verifyNotRegisteredHeading = "Your Shell is not on our produced units list";
+    export const verifyNotRegisteredPrompt = "The response was signed correctly, but no entry matches it. Contact us in Discord to go through the process together.";
     export const verifyErrorHeading = "Shell was not verified";
     export const verifyErrorPrompt = "Something went wrong. Go to Settings/Shell/Verify on your Shell and try again.";
 

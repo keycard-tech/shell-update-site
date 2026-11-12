@@ -20,5 +20,5 @@ checksum of each, for updating in air-gapped mode. Earlier releases are listed u
 on the screen, the page opens the camera and scans the QR the Shell answers with. The check itself has
 changed. The page fetches the signed list of produced devices and authenticates it against a pinned provisioning key, then checks the signature your Shell made over a challenge.
 
-The three answers are separate: the key is in the list, the response is correctly signed but no row
-matches it, and the response could not be checked at all.
+The three answers are separate: the key is on the produced units list, the response is correctly signed but no
+entry matches it, and the response could not be checked at all.

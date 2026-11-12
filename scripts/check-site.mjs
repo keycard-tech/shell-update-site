@@ -1,4 +1,4 @@
-// Walks a built site through the Pages server: a page is only correct if the URL a visitor follows renders it.
+// Walks a built site through the Pages server: a page is only correct if the URL a visitor follows renders it
 
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,10 +33,7 @@ const refsIn = (html) =>
     .map(([, , quoted, bare]) => quoted ?? bare)
     .filter((ref) => ref !== undefined && !/^(https?:|mailto:|javascript:|#|data:)/.test(ref) && ref !== "");
 
-// Reported rather than thrown, so one bad artifact does not hide the state of the rest of the site. The
-// database has to carry the Shell magic; the allowlist has to survive every refusal rule of shell-units'
-// reader, the signature against the pinned key included. Nothing is inferred from the firmware's flags
-// byte: 0 is what the multicoin build carries and the meaning of the rest is not written down upstream.
+// Reported rather than thrown, so one bad artifact does not hide the state of the rest of the site
 const versionInside = (kind, bytes) => {
   if (kind === "firmware") return firmwareVersion(bytes);
   if (kind === "database") return databaseMagic(bytes) === DB_MAGIC ? databaseVersion(bytes) : "bad magic";
@@ -65,8 +62,7 @@ for (const page of PAGES) {
 
   for (const entry of broken) fail(link, `${entry.status} ${entry.ref}`);
 
-  // An artifact's path is only ever correct as part of a document, because the sync is what gives it one.
-  // Compared by name rather than by prefix, since the bundler rewrites "./media/x" to "/media/x".
+  // An artifact's path is only correct as part of a document, and is compared by name because the bundler rewrites ./media/x to /media/x
   for (const ref of refs) {
     if (ARTIFACT_NAMES.has(new URL(ref, landed.url).pathname.split("/").pop())) fail(link, `${ref} names an artifact directly, which only a document may do`);
   }
@@ -79,7 +75,7 @@ for (const page of PAGES) {
       const fetched = await get(new URL(mediaPrefix + document, landed.url).href);
 
       if (fetched.status !== 200) fail(link, `${fetched.status} ${mediaPrefix + document}`);
-      // the artifacts a document names are relative to the document, not to the page that fetched it
+      // The artifacts a document names are relative to the document, not to the page that fetched it
       else documents.set(document, { at: fetched.url, ...JSON.parse(Buffer.from(await fetched.body()).toString()) });
     }
   }
@@ -94,8 +90,7 @@ for (const [name, path] of Object.entries(URLS)) {
   else console.log(`url ${name} -> ${landed.url.slice(origin.length)}`);
 }
 
-// Every artifact a document names has to be served, carry the version the document claims, and hash to
-// what it publishes. The paths are relative to the document, not to the page that fetched it.
+// Every artifact a document names must be served, carry the version the document claims, and hash to what it publishes
 const checkChain = async (document, kind, url, body) => {
   for (const { path, hash } of artifactsOf(body)) {
     const artifact = await get(new URL(path, url).href);

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Keycard Shell update website",
   "private": true,
+  "type": "module",
   "license": "MIT",
   "source": [
     "pages/index.html",

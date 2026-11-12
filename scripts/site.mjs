@@ -1,4 +1,4 @@
-// The site's URL tree: the one place a page path, a link target, the media prefix or the site base is written.
+// The site's URL tree: the one place a page path, a link target, the media prefix or the site base is written
 
 import { readFileSync } from "node:fs";
 
@@ -26,7 +26,7 @@ export const PAGES = [
 
 export const MEDIA = "media/";
 
-// The mirror the pages read: the artifacts under names that never change, and the documents that name them.
+// The mirror the pages read: the artifacts under names that never change, and the documents that name them
 export const ARTIFACTS = {
   firmware: "firmware.bin",
   firmwareBtc: "firmware-btc.bin",
@@ -35,21 +35,17 @@ export const ARTIFACTS = {
 };
 export const DOCUMENTS = ["get-firmware.json", "get-db.json", "get-units.json", "get-firmwares.json", "get-dbs.json", "sync.json"];
 
-// The key the SHVR allowlist signature is checked against. Pinned, and never taken from the origin the
-// file came from: shell-units' docs/format.md is explicit that a client doing that gains nothing.
-// The page that verifies a device imports the same file.
+// The pinned key the allowlist signature is checked against, never inferred from where the file was downloaded from
 export const UNITS_VERIFY_KEY = JSON.parse(readFileSync(new URL("../trust.json", import.meta.url))).unitsVerifyKey;
 
-// The documents a page reads, and the release kind the artifacts they name come from. A kind is fatal
-// to the sync exactly when it appears here: a page cannot serve what was never certified, but a kind no
-// page reads is only worth a warning.
+// A release kind is fatal to the sync exactly when a page reads it; one no page reads is only a warning
 export const PAGE_DOCUMENTS = [
   { kind: "firmware", document: "get-firmware.json" },
   { kind: "database", document: "get-db.json" },
   { kind: "units", document: "get-units.json" },
 ];
 
-// The artifacts a document names, by path relative to itself and by the hash it publishes for them.
+// The artifacts a document names, by path relative to itself and by the hash it publishes for them
 export const artifactsOf = (document) =>
   document.variants !== undefined
     ? document.variants.map(({ path, hash }) => ({ path, hash }))
@@ -57,7 +53,7 @@ export const artifactsOf = (document) =>
 
 export const at = (path) => (BASE.endsWith("/") ? BASE + path : `${BASE}/${path}`);
 
-// "update/air-gapped/index.html" is linked as "/update/air-gapped", not as ".../index.html".
+// "update/air-gapped/index.html" is linked as "/update/air-gapped", not as ".../index.html"
 export const linkOf = (page) => at(page.path.replace(/index\.html$/, ""));
 
 export const prefix = (base) => (base.endsWith("/") ? base : `${base}/`);

@@ -24,13 +24,6 @@ export namespace UIUtils {
     }
   }
 
-  export function handleMessageLog(msgField: HTMLSpanElement, msg: string) : void {
-    msgField.innerHTML = msg;
-    msgField.classList.contains("keycard_shell__display-none") && msg != "" ? msgField.classList.remove("keycard_shell__display-none") : msgField.classList.add("keycard_shell__display-none");
-  }
-
-  // A laptop with a built-in webcam and an external one gets the choice, because the default is rarely
-  // the one pointing at a Shell screen.
   export function addCameraSelectOption(selectField: HTMLSelectElement, cameras: CameraDevice[]) : void {
     for (const camera of cameras) {
       selectField.add(new Option(camera.label != "" ? camera.label : `Camera ${selectField.options.length + 1}`, camera.id));
@@ -57,7 +50,6 @@ export namespace UIUtils {
     return (verArr[0] * 1000000) + (verArr[1] * 1000) + verArr[2];
   }
 
-  // the shape of get-firmware.json, and the title a page gives one of its builds
   export interface FirmwareVariant { id: string; label: string; device: number; path: string; hash: string }
   export interface FirmwareContext { version: string; variants: FirmwareVariant[] }
 

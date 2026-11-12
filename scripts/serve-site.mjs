@@ -1,4 +1,4 @@
-// Serves a directory as GitHub Pages does: index.html inside a path, 301 to the trailing-slash form otherwise.
+// Serves a directory as GitHub Pages does: index.html inside a path, 301 to the trailing-slash form otherwise
 
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -14,7 +14,7 @@ const TYPES = {
   ".txt": "text/plain", ".woff2": "font/woff2", ".map": "application/json",
 };
 
-export const pagesServer = ({ dir, base = "/" }) => {
+const pagesServer = ({ dir, base = "/" }) => {
   const root = prefix(base);
 
   return createServer(async (req, res) => {

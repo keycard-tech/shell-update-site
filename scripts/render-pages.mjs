@@ -1,4 +1,4 @@
-// Renders the upstream Django templates into the URL tree of scripts/site.mjs, using only the tags they use.
+// Renders the upstream Django templates into the URL tree of scripts/site.mjs, using only the tags they use
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -53,7 +53,7 @@ async function renderPage(page) {
   return { html: resolveTags(await expandIncludes(merged), depth), title: (defined.get("title") ?? "").trim() };
 }
 
-// Pages are overwritten, never cleared with the directory: pages/media holds the mirrored artifacts inside it.
+// Pages are overwritten, never cleared with the directory: pages/media holds the mirrored artifacts inside it
 for (const page of PAGES) {
   const { html, title } = await renderPage(page);
 

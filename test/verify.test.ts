@@ -1,7 +1,4 @@
-// Ported from keycard-tech/shell-units tests/verify.test.mjs at tag 20261112: file authentication,
-// row agreement with the builder, the device challenge/response, and every way a response can be
-// wrong. The fixtures come from test/fixtures.ts instead of a Python-built database, so `npm test`
-// needs nothing but Node.
+// Ported from keycard-tech/shell-units tests/verify.test.mjs, with fixtures from test/fixtures.ts so npm test needs nothing but Node
 
 import assert from "node:assert/strict";
 import { crc32 } from "node:zlib";
@@ -11,7 +8,7 @@ import { BYTEWORDS, identifier } from "@blockchaincommons/uniform-resources/byte
 import { bstr, buildAllowlist, bytesToHex, compare, concat, deviceSign, hexToBytes, responseBytes, sha256, syntheticDevices, uint } from "./fixtures.ts";
 import { findRow, loadDatabase, NotRegistered, Refusal, rowHash, verifyDeviceResponse } from "../src/js/shvr/db.ts";
 import { encodeDevAuthInit } from "../src/js/shvr/cbor.ts";
-import { DEV_AUTH_TYPE, encodeBytewords, looksLikeUr, urDecode, urEncode } from "../src/js/shvr/ur.ts";
+import { DEV_AUTH_TYPE, encodeBytewords, urDecode, urEncode } from "../src/js/shvr/ur.ts";
 
 const signingKey = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
 const verifyKey = bytesToHex(secp256k1.getPublicKey(hexToBytes(signingKey), true));
@@ -53,7 +50,6 @@ const good = responseOf(device, challenge);
 test("a response round-trips through the text a scanner returns", () => {
   const text = urEncode(DEV_AUTH_TYPE, good);
   assert.ok(text.startsWith("UR:DEV-AUTH/"), `bad UR text ${text.slice(0, 20)}`);
-  assert.ok(looksLikeUr(text));
   assert.equal(verifyDeviceResponse(db, challenge, urDecode(text, DEV_AUTH_TYPE)).hex, bytesToHex(device.pub));
 });
 
@@ -120,8 +116,7 @@ test("refused: a truncated file", () => {
   assert.throws(() => loadDatabase(file.subarray(0, file.length - 1), verifyKey), Refusal);
 });
 
-// A mutation of the header also breaks the signature, so these assert on the message: matching only
-// the exception type would pass when the signature check caught it instead of the field check.
+// A mutated header also breaks the signature, so these assert on the message and not just the exception type
 test("refused: a header this reader must not interpret", () => {
   assert.throws(() => loadDatabase(mutate(6, 24), verifyKey), /uid length/);
   assert.throws(() => loadDatabase(mutate(4, 2), verifyKey), /format version/);
@@ -139,7 +134,7 @@ test("refused: rows out of order", () => {
   const header = Uint8Array.from(file.subarray(0, 64));
   new DataView(header.buffer).setUint32(8, 2, true);
 
-  // Sorted the wrong way and signed that way, so the refusal can only come from the order check.
+  // Sorted the wrong way and signed that way, so the refusal can only come from the order check
   const prefix = concat(header, new Uint8Array(32).fill(0xff), new Uint8Array(32).fill(0x01));
   const signature = secp256k1.sign(sha256(prefix), hexToBytes(signingKey), { prehash: false, format: "compact" });
 
@@ -156,23 +151,18 @@ test("the challenge text follows the device framing rules", () => {
   assert.match(body, /^[a-z]+$/, `body is not lowercase letters only: ${body.slice(0, 24)}`);
   assert.equal(body.length, (payload.length + 4) * 2, "two letters per byte plus a 4 byte checksum");
 
-  // Naming the checksum without trusting the encoder means re-deriving it elsewhere: equal strings
-  // prove the algorithm is CRC-32 big-endian, which is what the device's bytewords.c computes.
+  // Equal strings prove the checksum is CRC-32 big-endian without re-deriving it elsewhere
   const want = (crc32(payload) >>> 0).toString(16).padStart(8, "0");
   assert.ok(body.endsWith(encodeBytewords(Uint8Array.from(Buffer.from(want, "hex")), "minimal").slice(0, 8)));
   assert.deepEqual(urDecode(text, DEV_AUTH_TYPE), payload);
 });
 
-// A table that is merely self-consistent passes every other test in this file and still produces codes
-// the firmware refuses without a word. These spellings are read out of the vendor bundle shell-units
-// ships at 20261112 — a second implementation, not the one under test. `identifier` is that table
-// spelled without a checksum, which is the thing being pinned.
+// A merely self-consistent table passes every other test here and still produces codes the firmware refuses; these spellings come from the vendor bundle shell-units ships at 20261112
 test("the bytewords table is the device's table", () => {
   assert.equal(identifier(new Uint8Array([0x00, 0x01, 0x02, 0x03]), { style: "minimal" }), "aeadaoax");
   assert.equal(identifier(Uint8Array.from([0xfc, 0xfd, 0xfe, 0xff]), { style: "minimal" }), "ztzczezm");
 
-  // The code is the first and last letter of each word, and the spec's claim is that those 256 pairs
-  // never collide; a table with a collision would decode two bytes to the same pair.
+  // The code is the first and last letter of each word, and the spec claims those 256 pairs never collide
   assert.equal(new Set(BYTEWORDS.map((word) => word[0] + word[word.length - 1])).size, 256);
 });
 

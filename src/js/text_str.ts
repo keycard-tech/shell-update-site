@@ -1,22 +1,15 @@
 export namespace TextStr {
-    /* Verifying a Shell. Three outcomes, three sentences: a key that is in the allowlist, a correctly
-       signed response from a key that is not in it, and a response this page could not check at all. The
-       old copy merged the last two into "not authentic", which sends someone with a camera glitch to
-       report a counterfeit device. */
     export const verifyAuthenticHeading = "Your Shell is authentic";
     export const verifyAuthenticPrompt = "This Shell signed a fresh challenge with a key that is in the list signed by the Keycard provisioning key.";
-    export const verifyNotRegisteredHeading = "Your Shell is not in the allowlist";
-    export const verifyNotRegisteredPrompt = "The response was correctly signed, but no row matches this key and uid. Check Keycard Shell documentation for more details or contact us.";
+    export const verifyNotRegisteredHeading = "Your Shell is not authentic";
+    export const verifyNotRegisteredPrompt = "No row matches this key. Contact us in Discord to go through the process together.";
     export const verifyErrorHeading = "Shell was not verified";
     export const verifyErrorPrompt = "Something went wrong. Go to Settings/Shell/Verify on your Shell and try again.";
 
     export const allowlistAbsent = "This site is serving no allowlist, so no Shell can be checked here.";
     export const allowlistRefused = "The allowlist this site serves does not verify against the key this page was built with, so nothing can be concluded from it.";
 
-    // row_count is padded and is not a device count, so it stays out of what a visitor reads; the sync
-    // log is where it belongs. The version is here because a support conversation needs to know which
-    // list was checked.
-    export const allowlistVersion = (version: string) => `Checked against allowlist ${version}.`;
+    export const producedUnitsListUpdated = (date: string) => `Produced units list last updated ${date}.`;
 
     export const scanning = "Scanning...";
 
@@ -29,7 +22,6 @@ export namespace TextStr {
 
     /* Update ERC20 Consts */
 
-    export const UpdateStartHeading = "Update ERC-20 token database";
     export const shellConnectedPrompt = "Keycard Shell successfully connected";
     export const shellDisconnectPrompt = "You can disconnect Keycard Shell";
 
@@ -38,8 +30,6 @@ export namespace TextStr {
 
     export const dbTransferedText = "Database transferred";
     export const fwTransferedText = "Firmware transferred";
-    export const dbInstalledText = "Database installed";
-    export const finishUpdateText = "Check Keycard Shell screen for instructions";
 
     export const startScreenHeadingDesktop = "Connect your Keycard Shell";
     export const startScreenHeadingMobile = "Connect via cable";

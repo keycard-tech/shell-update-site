@@ -315,7 +315,6 @@ async function handleShellUpdate() : Promise<void> {
         const firmware = firmwareChosen() ? selectedFirmware() : undefined;
         const fwPending = firmware !== undefined;
         const dbPending = dbUpdateCheckbox.checked && !isDBLatest;
-        // Writing the firmware restarts the Shell, so the drop before the database transfer is not a failure.
         restartBeforeNextStep = fwPending && dbPending;
 
         try {

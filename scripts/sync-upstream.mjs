@@ -1,19 +1,20 @@
-// GitHub serves release assets without CORS headers, so the bytes a page flashes are mirrored at build time.
+// GitHub serves release assets without CORS headers, so the bytes a page flashes are mirrored at build time
 
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DB_FORMAT, DB_MAGIC, SIG_SIZE, databaseFormat, databaseMagic, databaseVersion, firmwareVersion, flashImage, readUnits, sha256, unitsHeader } from "./binfmt.mjs";
+import { DB_FORMAT, DB_MAGIC, databaseFormat, databaseMagic, databaseVersion, firmwareVersion, flashImage, readUnits, sha256, unitsHeader } from "./binfmt.mjs";
+import { SIG_SIZE } from "../src/js/shvr/format.ts";
 import { ARTIFACTS, UNITS_VERIFY_KEY } from "./site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// what a Shell is flashed with, and the name its release gives it in *-sha256.txt; anchored, so bootloader and experimental images are never taken for one
+// What a Shell is flashed with, and the name its release gives it in *-sha256.txt; anchored, so bootloader and experimental images are never taken for one
 const FIRMWARE_VARIANTS = [
   {
     id: "multicoin",
     label: "omni",
-    // the code the device reports as fwVariant, which is not the image header's flags byte (32 on the btc build)
+    // The code the device reports as fwVariant, which is not the image header's flags byte (32 on the btc build)
     device: 0,
     file: ARTIFACTS.firmware,
     match: /^shellos-\d{8}-(\d+\.\d+\.\d+)\.bin$/,
@@ -45,7 +46,7 @@ const RELEASES = {
         id: "database",
         file: ARTIFACTS.database,
         match: /^shelldb-(\d{8})\.bin$/,
-        // Its sha256 file lists the file as built (db.bin), not as uploaded (shelldb-<date>.bin).
+        // Its sha256 file lists the file as built (db.bin), not as uploaded (shelldb-<date>.bin)
         checksumOf: () => "db.bin",
         required: true,
       },
@@ -53,14 +54,11 @@ const RELEASES = {
     flashHash: (file) => sha256(file.subarray(0, file.length - SIG_SIZE)),
     readVersion: releaseDatabase,
   },
-  // The device allowlist. Its certification is the signature inside the file, checked against the pinned
-  // key, so unlike the other two it needs no sha256 file from the release — and gets one compared anyway if
-  // upstream ever starts publishing it. Its tag is the build date, which is the version the header carries:
-  // confirmed against 20261112, the first release, which uploads shell-verification-db.bin and nothing else.
+  // The device allowlist: certified by the signature inside the file rather than by a sha256 file in the release, and its tag is the build date the header carries — confirmed against 20261112, the first release, which uploads shell-verification-db.bin and nothing else
   units: {
     repo: "keycard-tech/shell-units",
     signed: true,
-    // shell-units may have published nothing at all, which is not a failure; see syncUnits.
+    // shell-units may have published nothing at all, which is not a failure; see syncUnits
     allowAbsence: true,
     variants: [
       {
@@ -71,12 +69,11 @@ const RELEASES = {
         required: true,
       },
     ],
-    // The digest the signature covers: everything before the trailing 64 bytes, the same convention as the
-    // eth-db and the hash-and-check tools for it.
+    // The digest the signature covers: everything before the trailing 64 bytes, as in eth-db
     flashHash: (file) => sha256(file.subarray(0, file.length - SIG_SIZE)),
-    // Throws with the reason shell-units' own reader would refuse the file for.
+    // Throws with the reason shell-units' own reader would refuse the file for
     readVersion: (file) => readUnits(file, UNITS_VERIFY_KEY).version,
-    // For the log and sync.json only: row_count is padded to a power of two and is not a device count.
+    // For the log and sync.json only: row_count is padded to a power of two and is not a device count
     describe: (file) => {
       const { rowCount, salt } = unitsHeader(file);
 
@@ -87,14 +84,14 @@ const RELEASES = {
 
 const DATABASE_ZIP = /^db-(\d{8})-reproduction\.zip$/;
 
-// Upstream uploads a release from more than one job, so the file certifying an image can turn up minutes later.
+// Upstream uploads a release from more than one job, so the file certifying an image can turn up minutes later
 const UPLOAD_ATTEMPTS = Number(process.env.SYNC_UPLOAD_ATTEMPTS ?? 5);
 const UPLOAD_DELAY_MS = Number(process.env.SYNC_UPLOAD_DELAY_SECONDS ?? 60) * 1000;
 
 const args = process.argv.slice(2);
 const arg = (name, fallback) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : fallback);
 
-// The new mirror is assembled in STAGING and swapped into MIRROR only once it verifies, so a failed run keeps the old one.
+// The new mirror is assembled in STAGING and swapped into MIRROR only once it verifies, so a failed run keeps the old one
 const MIRROR = resolve(ROOT, arg("media", "pages/media"));
 const STAGING = `${MIRROR}.tmp`;
 const DRY_RUN = args.includes("--dry-run");
@@ -145,7 +142,7 @@ function releaseDatabase(file) {
 const versionOf = (tag) => tag.replace(/^v/, "");
 const assetIn = (release, pattern) => (release.assets ?? []).filter((asset) => pattern.test(asset.name));
 
-// keycard-shell-webapp stored timestamps as '%Y-%m-%d %H:%M' and the page scripts re-parse that shape.
+// keycard-shell-webapp stored timestamps as '%Y-%m-%d %H:%M' and the page scripts re-parse that shape
 const timestamp = (iso) => iso.slice(0, 16).replace("T", " ");
 
 async function releases(kind) {
@@ -159,7 +156,7 @@ async function releases(kind) {
 
 const releaseByTag = (kind, tag) => json(`https://api.github.com/repos/${RELEASES[kind].repo}/releases/tags/${tag}`);
 
-// The lines of the release's *-sha256.txt, as a map from the name it uses to the hash it publishes.
+// The lines of the release's *-sha256.txt, as a map from the name it uses to the hash it publishes
 async function publishedChecksums(release) {
   const [file] = assetIn(release, /-sha256\.txt$/);
 
@@ -173,7 +170,7 @@ async function publishedChecksums(release) {
   return new Map(lines.map(([hash, name]) => [name, hash]));
 }
 
-// A variant absent from the release is simply absent; one uploaded but unnamed by the checksum file means the upload is unfinished.
+// A variant absent from the release is simply absent; one uploaded but unnamed by the checksum file means the upload is unfinished
 async function readiness(kind, release) {
   const published = await publishedChecksums(release);
   const signed = RELEASES[kind].signed === true;
@@ -195,7 +192,7 @@ async function readiness(kind, release) {
     const hash = published?.get(variant.checksumOf(asset.name));
 
     if (hash === undefined) {
-      // Nothing to cross-check the download against, so verifyAndWrite's signature check is the certification.
+      // Nothing to cross-check the download against, so verifyAndWrite's signature check is the certification
       if (signed) {
         images.push({ variant, asset, published: undefined });
         continue;
@@ -213,7 +210,7 @@ async function readiness(kind, release) {
   return { ok: true, images, missing };
 }
 
-// A release that has some files but not the ones needed is most likely still being uploaded.
+// A release that has some files but not the ones needed is most likely still being uploaded
 const uploadStarted = (release) => (release.assets ?? []).length > 0;
 
 async function awaitUpload(kind, release, retries) {
@@ -236,7 +233,7 @@ const write = async (file, data) => {
 
 const writeJson = (file, value) => write(file, `${JSON.stringify(value, null, 2)}\n`);
 
-// A checksum that disagrees is corruption, not something to mirror around.
+// A checksum that disagrees is corruption, not something to mirror around
 async function verifyAndWrite(kind, release, { variant, asset, published }) {
   const data = await bytes(asset.browser_download_url);
 
@@ -249,8 +246,7 @@ async function verifyAndWrite(kind, release, { variant, asset, published }) {
   try {
     version = RELEASES[kind].readVersion(data);
   } catch (err) {
-    // The reader says what it refused — for the allowlist, that the signature is not the pinned key's —
-    // and which asset it refused has to travel with it, as it does on every other line here.
+    // The reader says what it refused, and which asset it refused has to travel with the message
     throw new Error(`${asset.name}: ${err.message}`);
   }
 
@@ -272,10 +268,10 @@ async function verifyAndWrite(kind, release, { variant, asset, published }) {
   };
 }
 
-// What a release offers to be flashed; a release without any, bootloader-only for instance, has nothing to announce.
+// What a release offers to be flashed; a release without any, bootloader-only for instance, has nothing to announce
 const imagesIn = (kind, release) => RELEASES[kind].variants.flatMap((variant) => assetIn(release, variant.match));
 
-// Newest first: mirror the first release that verifies, report the ones passed over, wait only on the newest.
+// Newest first: mirror the first release that verifies, report the ones passed over, wait only on the newest
 async function mirrorLatest(kind, published) {
   const skipped = [];
 
@@ -307,7 +303,7 @@ async function mirrorLatest(kind, published) {
   return { current: null, skipped };
 }
 
-// The history starts at the mirrored release, whose freshest reading is the one that was verified.
+// The history starts at the mirrored release, whose freshest reading is the one that was verified
 const releasesBelow = (published, mirrored) =>
   published.slice(mirrored.index).map((release) => (release.tag_name === mirrored.release.tag_name ? mirrored.release : release));
 
@@ -324,7 +320,7 @@ async function syncFirmware() {
 
     const version = versionOf(release.tag_name);
 
-    // release_notes.ts reads line 1 as the date and renders the rest as markdown; release bodies carry CRLF.
+    // release_notes.ts reads line 1 as the date and renders the rest as markdown; release bodies carry CRLF
     notes.push({ version, changelog: `changelogs/${version}.md` });
     await write(`changelogs/${version}.md`, `${timestamp(release.published_at)}\n${(release.body ?? "").replace(/\r\n/g, "\n")}`);
   }
@@ -345,13 +341,13 @@ async function syncDatabase() {
     const version = versionOf(release.tag_name);
     const [zip] = assetIn(release, DATABASE_ZIP);
 
-    // The history page links this zip, so a release without one has nothing to show.
+    // The history page links this zip, so a release without one has nothing to show
     if (zip === undefined) {
       console.warn(`${release.tag_name}: no reproduction zip, left out of the history`);
       continue;
     }
 
-    // eth-db commits manifest.txt at the tag, naming the three sources it fetched.
+    // eth-db commits manifest.txt at the tag, naming the three sources it fetched
     const manifest = await text(`https://raw.githubusercontent.com/${repo}/${release.tag_name}/manifest.txt`).catch((err) => {
       console.warn(`${release.tag_name}: ${err.message}, left out of the history`);
       return null;
@@ -373,10 +369,7 @@ async function syncDatabase() {
   return { current: mirrored.current, skipped: mirrored.skipped, history };
 }
 
-// The device allowlist, mirrored when shell-units publishes one. A page reads get-units.json, so a
-// release that cannot be certified fails the run: what a page reads cannot be served uncertified. What
-// stays legal is absence — nothing published, or nothing ready — because a stale file the browser can
-// verify is worth more to that page than no file at all.
+// Absence stays legal (nothing published, nothing ready) but an uncertifiable release fails the run, because a page reads get-units.json
 async function syncUnits(previous) {
   const mirrored = await mirrorLatest("units", await releases("units"));
 
@@ -386,9 +379,7 @@ async function syncUnits(previous) {
     return mirrored;
   }
 
-  // Whatever is mirrored now — signed, and certified when it was taken — is carried into the new mirror.
-  // sync.json goes on describing the file that is actually served, with the reason this run could not do
-  // better.
+  // Whatever is mirrored now — signed, certified when taken — is carried into the new mirror
   const carried = ["get-units.json", ARTIFACTS.units].map((file) =>
     readFile(join(MIRROR, file))
       .then((data) => write(file, data))
@@ -414,7 +405,7 @@ async function rebuild(previous) {
   const units = await syncUnits(previous);
   const db = database.current.variants[0];
 
-  // The documents name the artifacts, so they are written once every image is downloaded and verified.
+  // The documents name the artifacts, so they are written once every image is downloaded and verified
   await writeJson("get-firmware.json", { version: firmware.current.version, variants: firmware.current.variants.map(publicVariant) });
   await writeJson("get-db.json", { db_path: db.file, hash: db.hash, version: database.current.version });
   await writeJson("get-firmwares.json", firmware.notes);
@@ -427,7 +418,7 @@ async function rebuild(previous) {
     incomplete: [...firmware.skipped, ...database.skipped, ...units.skipped],
   });
 
-  // The old mirror moves aside rather than being deleted first, so there is never a moment with no mirror.
+  // The old mirror moves aside rather than being deleted first, so there is never a moment with no mirror
   const stale = `${MIRROR}.old`;
 
   await rm(stale, { recursive: true, force: true });
@@ -457,7 +448,7 @@ async function rebuild(previous) {
   }
 }
 
-// What a page needs about one mirrored image: where it is, what it hashes to, and the fwVariant code of the device that runs it.
+// What a page needs about one mirrored image: where it is, what it hashes to, and the fwVariant code of the device that runs it
 const publicVariant = ({ id, label, device, file, hash }) => ({ id, label, device, path: file, hash });
 
 const previous = await readFile(join(MIRROR, "sync.json"), "utf8").then(JSON.parse).catch(() => null);
@@ -475,7 +466,7 @@ if (DRY_RUN) {
           : `${kind}: upstream ${versionOf(latest.tag_name)}, mirrored ${mirrored}${versionOf(latest.tag_name) === mirrored ? " (up to date)" : " (out of date)"}`,
       );
     } catch (err) {
-      // Not being allowed to ask is not the same as nothing being published.
+      // Not being allowed to ask is not the same as nothing being published
       console.log(`${kind}: ${err.message}, mirrored ${mirrored}`);
     }
   }
@@ -488,7 +479,7 @@ await rm(STAGING, { recursive: true, force: true });
 try {
   await rebuild(previous);
 } catch (err) {
-  // Quota exhaustion is no verdict on the releases: keep the verified mirror, but never tolerate it when a token was sent.
+  // Quota exhaustion is no verdict on the releases: keep the verified mirror, but never tolerate it when a token was sent
   if (!rateLimited || token !== undefined || previous === null) throw err;
 
   console.warn(

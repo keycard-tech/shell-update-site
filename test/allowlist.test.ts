@@ -1,6 +1,4 @@
-// The same file read by the sync and by `npm run check`, which is a different reader from the page's
-// (scripts/binfmt.mjs runs in Node, src/js/shvr/db.ts in the browser) against the same fixtures. Both
-// have to refuse the same things, or a build certifies what a browser will not open.
+// Two readers of the same file — scripts/binfmt.mjs in Node, src/js/shvr/db.ts in the browser — must refuse the same things, or a build certifies what the page will not open
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -54,8 +52,7 @@ for (const [name, bytes, pattern] of refusals) {
   });
 }
 
-// A file whose length agrees with a row_count of zero is a well-formed contradiction, and only the
-// empty-array rule can catch it: the size check above is satisfied.
+// A length agreeing with a row_count of zero is a contradiction only the empty-array rule can catch
 test("refused: an allowlist with no rows at all", () => {
   const empty = new Uint8Array(128);
   empty.set(new TextEncoder().encode("SHVR"), 0);
@@ -65,7 +62,7 @@ test("refused: an allowlist with no rows at all", () => {
   assert.throws(() => unitsHeader(empty), /empty row array/);
 });
 
-// Sorted the wrong way and signed that way, so the refusal can only come from the order check.
+// Sorted the wrong way and signed that way, so the refusal can only come from the order check
 test("refused: rows out of order", () => {
   const header = Uint8Array.from(file.subarray(0, 64));
   new DataView(header.buffer).setUint32(8, 2, true);

@@ -1,4 +1,4 @@
-// Copies the mirror into dist/, whole or not at all: a missing file there is a 404, and Pages answers 404s with HTML.
+// Copies the mirror into dist/, whole or not at all: a missing file there is a 404, and Pages answers 404s with HTML
 
 import { cp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -29,14 +29,21 @@ if ((await missing(["index.html"], DIST)).length > 0) {
   process.exit(1);
 }
 
-// Every artifact a document names has to be there, and inside media/: anywhere else is the same 404.
+// Every artifact a document names has to be there, and inside media/: anywhere else is the same 404
 const artifacts = [];
 
 for (const { document } of PAGE_DOCUMENTS) {
   for (const { path } of artifactsOf(JSON.parse(await readFile(join(MIRROR, document), "utf8")))) {
-    if (!Object.values(ARTIFACTS).includes(path)) throw new Error(`${document} names ${path}, which is not a mirrored artifact`);
+    const reason = !Object.values(ARTIFACTS).includes(path)
+      ? `${document} names ${path}, which is not a mirrored artifact`
+      : (await missing([path], MIRROR)).length > 0
+        ? `${document} names ${path}, which ${MIRROR} does not contain`
+        : undefined;
 
-    if ((await missing([path], MIRROR)).length > 0) throw new Error(`${document} names ${path}, which ${MIRROR} does not contain`);
+    if (reason !== undefined) {
+      console.error(`${reason}. Nothing was copied.`);
+      process.exit(1);
+    }
 
     artifacts.push(path);
   }

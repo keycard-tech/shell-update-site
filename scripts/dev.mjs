@@ -1,4 +1,4 @@
-// npm start: parcel watch plus the Pages server, because parcel serve answers unbuilt paths such as media/ with index.html.
+// npm start: parcel watch plus the Pages server, because parcel serve answers unbuilt paths such as media/ with index.html
 
 import { spawn } from "node:child_process";
 import { rm, symlink } from "node:fs/promises";
@@ -11,10 +11,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, ".parcel-dev");
 const BASE = process.env.SITE_BASE ?? "/";
 const PORT = Number(process.env.PORT ?? 1234);
-// `parcel watch` starts a server of its own whatever it is told, and that one has no /media: keep it off PORT.
+// `parcel watch` starts a server of its own whatever it is told, and that one has no /media: keep it off PORT
 const PARCEL_PORT = PORT + 1;
 
-// The mirror is linked, not copied: a sync that runs later is visible without rebuilding anything.
+// The mirror is linked, not copied: a sync that runs later is visible without rebuilding anything
 const linkMedia = async () => {
   const target = join(DIST, "media");
 

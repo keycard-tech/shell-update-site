@@ -3,7 +3,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DB_MAGIC, databaseMagic, databaseVersion, firmwareVersion, sha256 } from "./binfmt.mjs";
-import { PAGES, URLS, UPDATES, at, linkOf, prefix } from "./site.mjs";
+import { PAGES, URLS, PAGE_DOCUMENTS, artifactsOf, at, linkOf, prefix } from "./site.mjs";
 import { listen } from "./serve-site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -61,11 +61,11 @@ for (const page of PAGES) {
   const mediaPrefix = value?.[3] ?? value?.[4];
 
   if (mediaPrefix !== undefined) {
-    for (const { document } of UPDATES) {
+    for (const { document } of PAGE_DOCUMENTS) {
       const fetched = await get(new URL(mediaPrefix + document, landed.url).href);
 
       if (fetched.status !== 200) fail(link, `${fetched.status} ${mediaPrefix + document}`);
-      // fw_path and db_path are relative to the JSON, not to the page that fetched it.
+      // the artifacts a document names are relative to the document, not to the page that fetched it
       else documents.set(document, { at: fetched.url, ...JSON.parse(Buffer.from(await fetched.body()).toString()) });
     }
   }
@@ -80,19 +80,24 @@ for (const [name, path] of Object.entries(URLS)) {
   else console.log(`url ${name} -> ${landed.url.slice(origin.length)}`);
 }
 
-for (const { kind, document, key } of UPDATES) {
+// Every artifact a document names has to be served, carry the version the document claims, and hash to what it publishes.
+for (const { kind, document } of PAGE_DOCUMENTS) {
   const read = documents.get(document);
 
   if (read === undefined) fail(document, "never fetched by any page");
   else {
-    const artifact = await get(new URL(read[key], read.at).href);
-    const bytes = Buffer.from(await artifact.body());
-    const inside = versionInside(kind, bytes);
+    for (const { path, hash } of artifactsOf(read)) {
+      const artifact = await get(new URL(path, read.at).href);
+      const bytes = Buffer.from(await artifact.body());
+      const served = sha256(bytes);
+      const inside = versionInside(kind, bytes);
 
-    console.log(`${document}: ${read.version} ${sha256(bytes).slice(0, 16)}… ${bytes.length} bytes, in-bin ${inside}`);
+      console.log(`${document} ${path}: ${read.version} ${served.slice(0, 16)}… ${bytes.length} bytes, in-bin ${inside}`);
 
-    if (artifact.status !== 200) fail(document, `${artifact.status} for ${read[key]}`);
-    if (String(read.version) !== inside) fail(document, `version ${read.version} is not the version in ${read[key]}`);
+      if (artifact.status !== 200) fail(document, `${artifact.status} for ${path}`);
+      if (String(read.version) !== inside) fail(document, `version ${read.version} is not the version in ${path}`);
+      if (hash !== undefined && hash !== served) fail(document, `${path} is ${served}, the document says ${hash}`);
+    }
   }
 }
 

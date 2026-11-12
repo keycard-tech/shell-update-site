@@ -4,9 +4,8 @@ const mediaPrefix = document.getElementById('update__media-prefix') as HTMLInput
 const osSelector = document.getElementById('op-system-selector') as HTMLSelectElement;
 
 const appDownloadBtn = document.getElementById("download-app-btn") as HTMLAnchorElement;
-const appChangelogBtn = document.getElementById("app-changelog") as HTMLAnchorElement;
-const appHash = document.getElementById("app-hash") as HTMLSpanElement;
 
+const fwVariants = document.getElementById("fw-variant-selector") as HTMLSelectElement;
 const fwDownloadBtn = document.getElementById("download-fw") as HTMLAnchorElement;
 const fwChangelogBtn = document.getElementById("fw-changelog") as HTMLAnchorElement;
 const fwHash = document.getElementById("fw-hash") as HTMLSpanElement;
@@ -19,6 +18,8 @@ const dbBtnLabel = document.getElementById("download-db-label") as HTMLSpanEleme
 const updaterDownloadPath = "https://github.com/keycard-tech/kshell-updater/releases/latest/download/";
 const updaterName = "keycard-shell-updater-";
 
+let firmwareContext: UIUtils.FirmwareContext;
+
 function generateDownloadLink(btn: HTMLAnchorElement, os: string) : void {
     if(os == "mac") {
         btn.href = updaterDownloadPath + updaterName + 'mac.zip';
@@ -29,28 +30,34 @@ function generateDownloadLink(btn: HTMLAnchorElement, os: string) : void {
     }
 }
 
+function showFirmware() : void {
+    const variant = firmwareContext.variants.find((each) => each.id === fwVariants.value) ?? firmwareContext.variants[0];
+
+    fwBtnLabel.innerHTML = `Download Firmware ${UIUtils.firmwareTitle(firmwareContext, variant)}`;
+    fwHash.innerHTML = variant.hash;
+    fwDownloadBtn.href = mediaPrefix.value + variant.path;
+}
+
 async function handleAirGappedUpdate() : Promise<void> {
-    const fwContext = await fetch(mediaPrefix.value + "get-firmware.json").then((r) => r.json());
+    firmwareContext = await fetch(mediaPrefix.value + "get-firmware.json").then((r: any) => r.json());
     const dbContext = await fetch(mediaPrefix.value + "get-db.json").then((r: any) => r.json());
-    const fwFilePath = await fetch(mediaPrefix.value + fwContext["fw_path"]) as any;
-    const dbFilePath = await fetch(mediaPrefix.value + dbContext["db_path"]) as any;
-    
+
     osSelector.value = UIUtils.getOS();
-    
+
     osSelector.addEventListener("change", () => generateDownloadLink(appDownloadBtn, osSelector.value));
 
     generateDownloadLink(appDownloadBtn, osSelector.value);
 
-    fwBtnLabel.innerHTML = `Download Firmware ${fwContext["version"]}`;
+    for(const variant of firmwareContext.variants) fwVariants.add(new Option(UIUtils.firmwareTitle(firmwareContext, variant), variant.id));
+
+    showFirmware();
+    fwVariants.addEventListener("change", showFirmware);
+
     dbBtnLabel.innerHTML = `Download Database ${dbContext["version"]}`;
-
-    fwHash.innerHTML = fwContext["hash"];
     dbHash.innerHTML = dbContext["hash"];
+    dbDownloadBtn.href = mediaPrefix.value + dbContext["db_path"];
 
-    fwDownloadBtn.href = fwFilePath.url;
-    dbDownloadBtn.href = dbFilePath.url;
-
-    fwChangelogBtn.href += `fw-rn-${fwContext["version"]}`;
+    fwChangelogBtn.href += `fw-rn-${firmwareContext.version}`;
     dbChangelogBtn.href += `db-version-container-${dbContext["version"]}`;
 }
 

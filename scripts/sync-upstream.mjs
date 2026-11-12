@@ -3,29 +3,54 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DB_FORMAT, DB_MAGIC, SIG_SIZE, databaseFormat, databaseMagic, databaseVersion, firmwareFlags, firmwareVersion, flashImage, sha256 } from "./binfmt.mjs";
+import { DB_FORMAT, DB_MAGIC, SIG_SIZE, databaseFormat, databaseMagic, databaseVersion, firmwareVersion, flashImage, sha256 } from "./binfmt.mjs";
 import { ARTIFACTS } from "./site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// A release carries other images (bootloader, dev, btc-only); the pattern is the one that gets flashed.
+// what a Shell is flashed with, and the name its release gives it in *-sha256.txt; anchored, so bootloader and experimental images are never taken for one
+const FIRMWARE_VARIANTS = [
+  {
+    id: "multicoin",
+    label: "omni",
+    // the code the device reports as fwVariant, which is not the image header's flags byte (32 on the btc build)
+    device: 0,
+    file: ARTIFACTS.firmware,
+    match: /^shellos-\d{8}-(\d+\.\d+\.\d+)\.bin$/,
+    checksumOf: (name) => name,
+    required: true,
+  },
+  {
+    id: "btc",
+    label: "btc",
+    device: 1,
+    file: ARTIFACTS.firmwareBtc,
+    match: /^shellos-\d{8}-(\d+\.\d+\.\d+)-btc-only\.bin$/,
+    checksumOf: (name) => name.replace(/^shellos-/, "shellos-btc-").replace(/-btc-only\.bin$/, ".bin"),
+    required: false,
+  },
+];
+
 const RELEASES = {
   firmware: {
     repo: "keycard-tech/keycard-shell",
-    match: /^shellos-\d{8}-(\d+\.\d+\.\d+)\.bin$/,
-    // Its sha256 file lists the asset by uploaded name.
-    checksum: (asset) => asset.name,
+    variants: FIRMWARE_VARIANTS,
     flashHash: flashImage,
-    file: ARTIFACTS.firmware,
-    readVersion: releaseFirmware,
+    readVersion: firmwareVersion,
   },
   database: {
     repo: "keycard-tech/keycard-eth-db",
-    match: /^shelldb-(\d{8})\.bin$/,
-    // Its sha256 file lists the file as built (db.bin), not as uploaded (shelldb-<date>.bin).
-    checksum: () => "db.bin",
-    flashHash: (bytes) => sha256(bytes.subarray(0, bytes.length - SIG_SIZE)),
-    file: ARTIFACTS.database,
+    variants: [
+      {
+        id: "database",
+        file: ARTIFACTS.database,
+        match: /^shelldb-(\d{8})\.bin$/,
+        // Its sha256 file lists the file as built (db.bin), not as uploaded (shelldb-<date>.bin).
+        checksumOf: () => "db.bin",
+        required: true,
+      },
+    ],
+    flashHash: (file) => sha256(file.subarray(0, file.length - SIG_SIZE)),
     readVersion: releaseDatabase,
   },
 };
@@ -75,15 +100,6 @@ const bytes = async (url) => request(url, "application/octet-stream").then((r) =
 
 const sleep = (ms) => new Promise((wait) => setTimeout(wait, ms));
 
-// What the site offers is a release build: not a beta or a variant, and a real Shell database.
-function releaseFirmware(image) {
-  const flags = firmwareFlags(image);
-
-  if (flags !== 0) throw new Error(`image is a beta or variant build (flags byte ${flags}), not the release the site offers`);
-
-  return firmwareVersion(image);
-}
-
 function releaseDatabase(file) {
   const magic = databaseMagic(file);
 
@@ -113,8 +129,8 @@ async function releases(kind) {
 
 const releaseByTag = (kind, tag) => json(`https://api.github.com/repos/${RELEASES[kind].repo}/releases/tags/${tag}`);
 
-// The hash the release publishes for this artifact, or undefined if the release does not publish one for it.
-async function publishedChecksum(release, name) {
+// The lines of the release's *-sha256.txt, as a map from the name it uses to the hash it publishes.
+async function publishedChecksums(release) {
   const [file] = assetIn(release, /-sha256\.txt$/);
 
   if (file === undefined) return undefined;
@@ -124,21 +140,40 @@ async function publishedChecksum(release, name) {
     .filter((line) => !line.startsWith("#") && line.trim() !== "")
     .map((line) => line.trim().split(/\s+/));
 
-  return lines.find(([, entry]) => entry === name)?.[0];
+  return new Map(lines.map(([hash, name]) => [name, hash]));
 }
 
-// To be mirrored a release needs the image and a published checksum naming it.
+// A variant absent from the release is simply absent; one uploaded but unnamed by the checksum file means the upload is unfinished.
 async function readiness(kind, release) {
-  const [asset] = assetIn(release, RELEASES[kind].match);
+  const published = await publishedChecksums(release);
 
-  if (asset === undefined) return { ok: false, reason: "no image asset" };
-  if (assetIn(release, /-sha256\.txt$/).length === 0) return { ok: false, reason: "publishes no sha256 file" };
+  if (published === undefined) return { ok: false, reason: "publishes no sha256 file" };
 
-  const published = await publishedChecksum(release, RELEASES[kind].checksum(asset));
+  const images = [];
+  const missing = [];
 
-  return published === undefined
-    ? { ok: false, reason: `${asset.name} is not in the published sha256 file` }
-    : { ok: true, asset, published };
+  for (const variant of RELEASES[kind].variants) {
+    const [asset] = assetIn(release, variant.match);
+
+    if (asset === undefined) {
+      if (variant.required) return { ok: false, reason: `no ${variant.id} image asset` };
+
+      continue;
+    }
+
+    const hash = published.get(variant.checksumOf(asset.name));
+
+    if (hash === undefined) {
+      if (variant.required) return { ok: false, reason: `${asset.name} is not in the published sha256 file` };
+
+      missing.push(`${asset.name} is not in the published sha256 file`);
+      continue;
+    }
+
+    images.push({ variant, asset, published: hash });
+  }
+
+  return { ok: true, images, missing };
 }
 
 // A release that has some files but not the ones needed is most likely still being uploaded.
@@ -157,7 +192,6 @@ async function awaitUpload(kind, release, retries) {
   return { release, ready };
 }
 
-// A checksum that disagrees is corruption and stops the run; a missing file only means the release is unverifiable.
 const write = async (file, data) => {
   await mkdir(dirname(join(STAGING, file)), { recursive: true });
   await writeFile(join(STAGING, file), data);
@@ -165,22 +199,25 @@ const write = async (file, data) => {
 
 const writeJson = (file, value) => write(file, `${JSON.stringify(value, null, 2)}\n`);
 
-async function verifyAndWrite(kind, release, asset, published) {
-  const artifact = RELEASES[kind];
+// A checksum that disagrees is corruption, not something to mirror around.
+async function verifyAndWrite(kind, release, { variant, asset, published }) {
   const data = await bytes(asset.browser_download_url);
 
   if (data.byteLength !== asset.size) throw new Error(`${asset.name}: got ${data.byteLength} of ${asset.size} bytes`);
 
-  const flashHash = artifact.flashHash(data);
-  const version = artifact.readVersion(data);
+  const flashHash = RELEASES[kind].flashHash(data);
+  const version = RELEASES[kind].readVersion(data);
 
   if (published !== flashHash) throw new Error(`${asset.name}: ${flashHash} does not match the published ${published}`);
   if (version !== versionOf(release.tag_name)) throw new Error(`${asset.name}: carries version ${version}, its release is tagged ${release.tag_name}`);
 
-  await write(artifact.file, data);
+  await write(variant.file, data);
 
-  return { version, tag: release.tag_name, release: release.html_url, asset: asset.name, size: asset.size, hash: sha256(data), flash_hash: flashHash };
+  return { id: variant.id, label: variant.label, device: variant.device, file: variant.file, asset: asset.name, size: asset.size, hash: sha256(data), flash_hash: flashHash };
 }
+
+// What a release offers to be flashed; a release without any, bootloader-only for instance, has nothing to announce.
+const imagesIn = (kind, release) => RELEASES[kind].variants.flatMap((variant) => assetIn(release, variant.match));
 
 // Newest first: mirror the first release that verifies, report the ones passed over, wait only on the newest.
 async function mirrorLatest(kind, published) {
@@ -195,7 +232,16 @@ async function mirrorLatest(kind, published) {
       continue;
     }
 
-    return { current: await verifyAndWrite(kind, release, ready.asset, ready.published), release, index, skipped };
+    for (const reason of ready.missing) {
+      console.warn(`${release.tag_name}: ${reason}, that image is not offered`);
+      skipped.push({ kind, tag: release.tag_name, reason });
+    }
+
+    const variants = [];
+
+    for (const image of ready.images) variants.push(await verifyAndWrite(kind, release, image));
+
+    return { current: { version: versionOf(release.tag_name), tag: release.tag_name, release: release.html_url, variants }, index, release, skipped };
   }
 
   return { current: null, skipped };
@@ -214,7 +260,7 @@ async function syncFirmware() {
   const notes = [];
 
   for (const release of releasesBelow(published, mirrored)) {
-    if (assetIn(release, RELEASES.firmware.match).length === 0) continue;
+    if (imagesIn("firmware", release).length === 0) continue;
 
     const version = versionOf(release.tag_name);
 
@@ -270,10 +316,11 @@ async function syncDatabase() {
 async function rebuild(previous) {
   const firmware = await syncFirmware();
   const database = await syncDatabase();
+  const db = database.current.variants[0];
 
-  // The documents name the artifacts, so they are written once both sides are downloaded and verified.
-  await writeJson("get-firmware.json", { fw_path: RELEASES.firmware.file, version: firmware.current.version, hash: firmware.current.hash });
-  await writeJson("get-db.json", { db_path: RELEASES.database.file, hash: database.current.hash, version: database.current.version });
+  // The documents name the artifacts, so they are written once every image is downloaded and verified.
+  await writeJson("get-firmware.json", { version: firmware.current.version, variants: firmware.current.variants.map(publicVariant) });
+  await writeJson("get-db.json", { db_path: db.file, hash: db.hash, version: database.current.version });
   await writeJson("get-firmwares.json", firmware.notes);
   await writeJson("get-dbs.json", database.history);
   await writeJson("sync.json", {
@@ -294,11 +341,14 @@ async function rebuild(previous) {
   for (const [kind, { current }] of [["firmware", firmware], ["database", database]]) {
     const before = previous?.[kind]?.version;
 
-    console.log(`${kind}: ${current.version}${before && before !== current.version ? ` (was ${before})` : ""} ${current.hash} ${current.asset}`);
+    console.log(`${kind}: ${current.version}${before && before !== current.version ? ` (was ${before})` : ""} ${current.variants.map((image) => `${image.file} ${image.hash}`).join(" ")}`);
   }
 
   for (const { kind, tag, reason } of [...firmware.skipped, ...database.skipped]) console.warn(`${kind}: ${tag} was not mirrored (${reason})`);
 }
+
+// What a page needs about one mirrored image: where it is, what it hashes to, and the fwVariant code of the device that runs it.
+const publicVariant = ({ id, label, device, file, hash }) => ({ id, label, device, path: file, hash });
 
 const previous = await readFile(join(MIRROR, "sync.json"), "utf8").then(JSON.parse).catch(() => null);
 

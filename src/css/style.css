@@ -752,6 +752,7 @@ body {
     flex-direction: row;
     gap: 12px;
     align-items: center;
+    position: relative;
 }
 
 .keycard_shell__checkbox-field {
@@ -785,6 +786,40 @@ body {
   transform: scale(1);
 }
 
+.keycard_shell__select-field.keycard_shell__checkbox-field-select {
+    position: absolute;
+    inset: 0;
+    border: none;
+    background-position: right 16px center;
+    color: transparent;
+    padding: 0;
+}
+
+.keycard_shell__checkbox-field-container .keycard_shell__checkbox-field {
+    position: relative;
+    z-index: 1;
+}
+
+.keycard_shell__checkbox-field-container .keycard_shell__checkbox-field-label,
+.keycard_shell__checkbox-field-container .keycard_shell__update-status {
+    white-space: nowrap;
+}
+
+.keycard_shell__checkbox-field-container .keycard_shell__update-status {
+    width: auto;
+    margin-left: auto;
+    margin-right: 24px;
+}
+
+.keycard_shell__checkbox-field-container .keycard_shell__checkbox-field-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.keycard_shell__select-field.keycard_shell__checkbox-field-select::picker(select) {
+    min-width: anchor-size(width);
+}
+
 .keycard_shell__checkbox-field-label {
     font-family: var(--text-font-inter);
     font-size: var(--text-16);
@@ -796,9 +831,9 @@ body {
 
 .keycard_shell__update-status {
     display: flex;
-    width: 100%;
+    width: 100px;
     flex-direction: row;
-    justify-content: flex-end;
+    justify-self: flex-end;
     color: var(--orange);
     flex-wrap: wrap;
 }

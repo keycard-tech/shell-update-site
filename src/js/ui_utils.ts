@@ -56,6 +56,14 @@ export namespace UIUtils {
     return (verArr[0] * 1000000) + (verArr[1] * 1000) + verArr[2];
   }
 
+  // the shape of get-firmware.json, and the title a page gives one of its builds
+  export interface FirmwareVariant { id: string; label: string; device: number; path: string; hash: string }
+  export interface FirmwareContext { version: string; variants: FirmwareVariant[] }
+
+  export function firmwareTitle(context: FirmwareContext, variant: FirmwareVariant) : string {
+    return `${context.version}-${variant.label}`;
+  }
+
   export function getOS() : string {
     if(navigator.userAgent.includes('Mac')) {
         return 'mac';

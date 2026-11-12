@@ -7,6 +7,7 @@ import Commands from "@choppu/shelljs/lib/commands";
 
 const mediaPrefix = document.getElementById('db_updater__media-prefix') as HTMLInputElement;
 
+
 const startUpdateScreen = document.getElementById("start-update-screen") as HTMLDivElement;
 const connectDeviceScreen = document.getElementById("connect-device-screen") as HTMLDivElement;
 const selectUpdateScreen = document.getElementById("select-update-screen") as HTMLDivElement;
@@ -26,12 +27,13 @@ const activeScreenClass = "keycard_shell__active-step";
 const fwUpdateCheckbox = document.getElementById("firmware-update") as HTMLInputElement;
 const dbUpdateCheckbox = document.getElementById("db-update") as HTMLInputElement;
 
-const fwUpdateCheckboxContainer = document.getElementById("firmware-update-container") as HTMLInputElement;
+const fwUpdateCheckboxContainer = document.getElementById("firmware-update-container") as HTMLDivElement;
 const dbUpdateCheckboxContainer = document.getElementById("db-update-container") as HTMLInputElement;
 
-const fwUpdateCheckboxLabel = document.getElementById("firmware-update-label") as HTMLLabelElement;
 const dbUpdateCheckboxLabel = document.getElementById("db-update-label") as HTMLLabelElement;
 
+const fwVariants = document.getElementById("firmware-variant") as HTMLSelectElement;
+const fwVariantLabel = document.getElementById("firmware-variant-label") as HTMLLabelElement;
 const fwUpdateStatus = document.getElementById("fw-update-status") as HTMLSpanElement;
 const dbUpdateStatus = document.getElementById("db-update-status") as HTMLSpanElement;
 
@@ -62,8 +64,59 @@ const mobileScreen = 959;
 const bc = new BroadcastChannel('process_channel');
 
 let isDBLatest : boolean;
-let isFWLatest: boolean;
+let fwVersionCurrent: boolean;
+let deviceVariant: string | undefined;
+let fwContext: UIUtils.FirmwareContext;
 let restartBeforeNextStep = false;
+let firmwareActive = true;
+
+const installedOnDevice = () : boolean => fwVersionCurrent && fwVariants.value === deviceVariant;
+const firmwareChosen = () : boolean => fwUpdateCheckbox.checked && !installedOnDevice();
+
+function addFirmwareOptions() : void {
+    for(const variant of fwContext.variants) fwVariants.add(new Option(UIUtils.firmwareTitle(fwContext, variant), variant.id));
+}
+
+const selectedFirmware = () : UIUtils.FirmwareVariant => fwContext.variants.find((variant) => variant.id === fwVariants.value) ?? fwContext.variants[0];
+
+function showSelectedFirmware() : void {
+    fwVariantLabel.innerHTML = UIUtils.firmwareTitle(fwContext, selectedFirmware());
+}
+
+function readDeviceFirmware(deviceVersion: number, deviceFWVariant: number | undefined, beta: number | undefined) : void {
+    fwVersionCurrent = deviceVersion === UIUtils.parseFWVersion(fwContext.version) && !beta;
+    deviceVariant = fwContext.variants.find((variant) => variant.device === deviceFWVariant)?.id;
+
+    if(deviceVariant !== undefined) fwVariants.value = deviceVariant;
+
+    firmwareActive = true;
+    fwUpdateCheckbox.checked = !fwVersionCurrent;
+
+    evaluateFirmware();
+}
+
+function evaluateFirmware() : void {
+    const installed = installedOnDevice();
+
+    showSelectedFirmware();
+    fwUpdateStatus.innerHTML = installed ? TextStr.latest : fwVersionCurrent ? TextStr.variantSwitch : TextStr.updateAvailable;
+    fwUpdateStatus.style.color = installed || fwVersionCurrent ? latestVersionColor : newestVersionColor;
+    fwUpdateCheckbox.disabled = installed;
+    if(installed) fwUpdateCheckbox.checked = false;
+    fwUpdateCheckboxContainer.style.opacity = firmwareActive ? fieldEnabled : fieldDisabled;
+
+    refreshUpdateChoice();
+}
+
+function refreshUpdateChoice() : void {
+    const fwChosen = firmwareChosen();
+    const dbChosen = !isDBLatest && dbUpdateCheckbox.checked;
+    const nothingToUpdate = !fwChosen && !dbChosen && isDBLatest && fwVersionCurrent;
+
+    selectUpdateText.innerHTML = nothingToUpdate ? TextStr.noUpdateNeeded : TextStr.selectiveUpdate;
+    transferDataBtn.style.display = nothingToUpdate ? "none" : "inherit";
+    transferDataBtn.disabled = !(fwChosen || dbChosen);
+}
 
 function checkLatestVersion(deviceVersion: number, webVersion: number, updateStatus: HTMLSpanElement, checkField: HTMLInputElement, container: HTMLDivElement) : boolean {
     if(webVersion <= deviceVersion) {
@@ -166,16 +219,16 @@ async function handleShellUpdate() : Promise<void> {
     let transport: Transport | null = null;
     let cmdSet: Commands | null = null;
 
-    const fwContext = await fetch(mediaPrefix.value + "get-firmware.json").then((r) => r.json());
+    fwContext = await fetch(mediaPrefix.value + "get-firmware.json").then((r) => r.json());
     const dbContext = await fetch(mediaPrefix.value + "get-db.json").then((r: any) => r.json());
 
     const dbData = await fetch(mediaPrefix.value + dbContext["db_path"]).then((r) => r.arrayBuffer());
-    const fwData = await fetch(mediaPrefix.value + fwContext["fw_path"]).then((r) => r.arrayBuffer());
 
-    fwUpdateCheckboxLabel.innerHTML = `${fwContext["version"]}`;
+    addFirmwareOptions();
+
     dbUpdateCheckboxLabel.innerHTML = `${dbContext["version"]}`;
 
-    transferDataBtn.disabled = !(dbUpdateCheckbox.checked || fwUpdateCheckbox.checked);
+    refreshUpdateChoice();
 
     handleMobileUI();
 
@@ -191,10 +244,10 @@ async function handleShellUpdate() : Promise<void> {
                 transport = await TransportWebHID.create();
                 cmdSet = new Commands(transport);
 
-                let { dbVersion, fwVersion } = await cmdSet.getAppConfiguration();
+                let { dbVersion, fwVersion, fwVariant, fwBeta } = await cmdSet.getAppConfiguration();
 
                 isDBLatest = checkLatestVersion(dbVersion, parseInt(dbContext["version"]), dbUpdateStatus, dbUpdateCheckbox, dbUpdateCheckboxContainer);
-                isFWLatest = checkLatestVersion(UIUtils.parseFWVersion(fwVersion), UIUtils.parseFWVersion(fwContext["version"]), fwUpdateStatus, fwUpdateCheckbox, fwUpdateCheckboxContainer);
+                readDeviceFirmware(UIUtils.parseFWVersion(fwVersion), fwVariant, fwBeta);
             
                 transport.on("disconnect", async () => {
                     const activeStep = document.getElementsByClassName(activeScreenClass)[0] as HTMLDivElement;
@@ -219,21 +272,26 @@ async function handleShellUpdate() : Promise<void> {
             }
         }
 
-        selectUpdateText.innerHTML = (isDBLatest && isFWLatest) ? TextStr.noUpdateNeeded : TextStr.selectiveUpdate;
-        transferDataBtn.style.display = (isDBLatest && isFWLatest) ? "none" : "inherit";
+        refreshUpdateChoice();
         e.preventDefault();
     });
 
     dbUpdateCheckbox.addEventListener("change", () => {
-        let fwChecked = isFWLatest ? false : fwUpdateCheckbox.checked;
-        transferDataBtn.disabled = !(dbUpdateCheckbox.checked || fwChecked);
         dbUpdateCheckboxContainer.style.opacity = dbUpdateCheckbox.checked ? fieldEnabled : fieldDisabled;
+        refreshUpdateChoice();
     });
 
     fwUpdateCheckbox.addEventListener("change", () => {
-        let dbChecked = isDBLatest ? false : dbUpdateCheckbox.checked;
-        transferDataBtn.disabled = !(fwUpdateCheckbox.checked || dbChecked);
-        fwUpdateCheckboxContainer.style.opacity = fwUpdateCheckbox.checked ? fieldEnabled : fieldDisabled;
+        firmwareActive = fwUpdateCheckbox.checked;
+
+        evaluateFirmware();
+    });
+
+    fwVariants.addEventListener("change", () => {
+        firmwareActive = true;
+        fwUpdateCheckbox.checked = !installedOnDevice();
+
+        evaluateFirmware();
     });
 
     continueUpdateBtn.addEventListener("click", async (e) => {
@@ -254,14 +312,17 @@ async function handleShellUpdate() : Promise<void> {
     transferDataBtn.addEventListener("click", async() => {
         showNextScreen(selectUpdateScreen, updateInProgressScreen);
 
-        const fwPending = fwUpdateCheckbox.checked && !isFWLatest;
+        const firmware = firmwareChosen() ? selectedFirmware() : undefined;
+        const fwPending = firmware !== undefined;
         const dbPending = dbUpdateCheckbox.checked && !isDBLatest;
         // Writing the firmware restarts the Shell, so the drop before the database transfer is not a failure.
         restartBeforeNextStep = fwPending && dbPending;
 
         try {
             if(fwPending) {
-                await transferTo(transport, cmdSet, firmwareTransfer(fwData, fwContext["version"]), 1);
+                const fwData = await fetch(mediaPrefix.value + firmware.path).then((r) => r.arrayBuffer());
+
+                await transferTo(transport, cmdSet, firmwareTransfer(fwData, UIUtils.firmwareTitle(fwContext, firmware)), 1);
 
                 if(dbPending) {
                     continueUpdateBtnContainer.classList.remove(hideScreenClass);

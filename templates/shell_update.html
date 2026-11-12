@@ -65,8 +65,9 @@
                 </div>
                 <div class="keycard_shell__checkbox-field-container" id="firmware-update-container">
                     <input type="checkbox" id="firmware-update" name="firmware-update" class="keycard_shell__checkbox-field" checked>
-                    <label for="firmware-update" id="firmware-update-label" class="keycard_shell__checkbox-field-label"></label>
+                    <label for="firmware-variant" id="firmware-variant-label" class="keycard_shell__checkbox-field-label"></label>
                     <span id="fw-update-status" class="keycard_shell__update-status keycard_shell__update-prompt">New version</span>
+                    <select name="firmware-variant" id="firmware-variant" class="keycard_shell__select-field keycard_shell__checkbox-field-select"></select>
                 </div>
                 <div class="keycard_shell__release-notes-container">
                     <a href="{% url 'firmware:release-notes' %}" target="_blank" class="keycard_shell__release-notes">Release notes</a>

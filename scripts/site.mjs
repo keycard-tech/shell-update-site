@@ -24,15 +24,21 @@ export const PAGES = [
 
 export const MEDIA = "media/";
 
-// The mirror the pages read: the two artifacts under names that never change, and the documents that name them.
-export const ARTIFACTS = { firmware: "firmware.bin", database: "db.bin" };
+// The mirror the pages read: the artifacts under names that never change, and the documents that name them.
+export const ARTIFACTS = { firmware: "firmware.bin", firmwareBtc: "firmware-btc.bin", database: "db.bin" };
 export const DOCUMENTS = ["get-firmware.json", "get-db.json", "get-firmwares.json", "get-dbs.json", "sync.json"];
 
-// The two documents an update page reads, the artifact each names relative to itself, and their release kind.
-export const UPDATES = [
-  { kind: "firmware", document: "get-firmware.json", key: "fw_path", artifact: ARTIFACTS.firmware },
-  { kind: "database", document: "get-db.json", key: "db_path", artifact: ARTIFACTS.database },
+// The documents an update page reads, and the release kind the artifacts they name come from.
+export const PAGE_DOCUMENTS = [
+  { kind: "firmware", document: "get-firmware.json" },
+  { kind: "database", document: "get-db.json" },
 ];
+
+// The artifacts a document names, by path relative to itself and by the hash it publishes for them.
+export const artifactsOf = (document) =>
+  document.variants !== undefined
+    ? document.variants.map(({ path, hash }) => ({ path, hash }))
+    : [{ path: document.db_path, hash: document.hash }];
 
 export const at = (path) => (BASE.endsWith("/") ? BASE + path : `${BASE}/${path}`);
 

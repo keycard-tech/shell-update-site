@@ -54,6 +54,12 @@
             <h3 class="keycard_shell__ag_update_step-heading">2.&nbsp; Download firmware package</h3>
             <span class="keycard_shell__ag_update_step-description">You can find Keycard Shell firmware releases on their <a href="https://github.com/keycard-tech/keycard-shell/releases" class="keycard_shell__page-top-help-link" target="_blank">GitHub repository</a>, or find the latest version below.</span>
         </div>
+        <div class="keycard_shell__select-app">
+            <label for="fw-variant-selector" class="keycard_shell__checkbox-field-top-label">Select variant</label>
+            <div class="keycard_shell__select-field-container">
+                <select name="fw-variant" id="fw-variant-selector" class="keycard_shell__select-field"></select>
+            </div>
+        </div>
         <div class="keycard_shell__btn-container keycard_shell__btn-ag-container">
             <a href="" class="keycard_shell__btn keycard_shell__btn-ag" id="download-fw" >
                 <img src="{% static 'keycard_shell/img/download.svg' %}" alt="Download" width="20px" height="20px">

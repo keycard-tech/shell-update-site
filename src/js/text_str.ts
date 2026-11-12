@@ -39,6 +39,7 @@ export namespace TextStr {
     export const startScreenPromptMobile = "Connect your Keycard Shell via USB-C cable";
 
     export const latest = "Up to date";
+    export const variantSwitch = "Variant switch";
     export const updateAvailable = "New version";
 
     export const noUpdateNeeded = "The database and firmware are up to date";

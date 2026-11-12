@@ -60,7 +60,7 @@ const RELEASES = {
   units: {
     repo: "keycard-tech/shell-units",
     signed: true,
-    // shell-units may have nothing published; see PROVISIONAL_DOCUMENTS.
+    // shell-units may have published nothing at all, which is not a failure; see syncUnits.
     allowAbsence: true,
     variants: [
       {
@@ -243,7 +243,16 @@ async function verifyAndWrite(kind, release, { variant, asset, published }) {
   if (data.byteLength !== asset.size) throw new Error(`${asset.name}: got ${data.byteLength} of ${asset.size} bytes`);
 
   const flashHash = RELEASES[kind].flashHash(data);
-  const version = RELEASES[kind].readVersion(data);
+
+  let version;
+
+  try {
+    version = RELEASES[kind].readVersion(data);
+  } catch (err) {
+    // The reader says what it refused — for the allowlist, that the signature is not the pinned key's —
+    // and which asset it refused has to travel with it, as it does on every other line here.
+    throw new Error(`${asset.name}: ${err.message}`);
+  }
 
   if (published !== undefined && published !== flashHash) throw new Error(`${asset.name}: ${flashHash} does not match the published ${published}`);
   if (version !== versionOf(release.tag_name)) throw new Error(`${asset.name}: carries version ${version}, its release is tagged ${release.tag_name}`);
@@ -364,17 +373,12 @@ async function syncDatabase() {
   return { current: mirrored.current, skipped: mirrored.skipped, history };
 }
 
-// The device allowlist, mirrored when shell-units publishes one. Neither a missing file nor a broken
-// release fails the run: nothing on the site reads it yet, which is what PROVISIONAL_DOCUMENTS says, and
-// a page that reads it will make it fatal by joining PAGE_DOCUMENTS.
+// The device allowlist, mirrored when shell-units publishes one. A page reads get-units.json, so a
+// release that cannot be certified fails the run: what a page reads cannot be served uncertified. What
+// stays legal is absence — nothing published, or nothing ready — because a stale file the browser can
+// verify is worth more to that page than no file at all.
 async function syncUnits(previous) {
-  let mirrored;
-
-  try {
-    mirrored = await mirrorLatest("units", await releases("units"));
-  } catch (err) {
-    mirrored = { current: null, skipped: [], note: err.message };
-  }
+  const mirrored = await mirrorLatest("units", await releases("units"));
 
   if (mirrored.current !== null) {
     await writeJson("get-units.json", { version: mirrored.current.version, variants: mirrored.current.variants.map(publicVariant) });
@@ -382,9 +386,9 @@ async function syncUnits(previous) {
     return mirrored;
   }
 
-  // A page reading the allowlist is better served a stale file it can verify than none at all, so whatever
-  // is mirrored now — signed, and certified when it was taken — is carried into the new mirror. sync.json
-  // goes on describing the file that is actually served, with the reason this run could not do better.
+  // Whatever is mirrored now — signed, and certified when it was taken — is carried into the new mirror.
+  // sync.json goes on describing the file that is actually served, with the reason this run could not do
+  // better.
   const carried = ["get-units.json", ARTIFACTS.units].map((file) =>
     readFile(join(MIRROR, file))
       .then((data) => write(file, data))
@@ -394,7 +398,7 @@ async function syncUnits(previous) {
   if ((await Promise.all(carried)).some((data) => data === null)) return mirrored;
 
   const document = JSON.parse(await readFile(join(MIRROR, "get-units.json"), "utf8"));
-  const reason = mirrored.note ?? `${RELEASES.units.repo} has published no release`;
+  const reason = mirrored.note ?? `${RELEASES.units.repo} published nothing ready to mirror`;
 
   return {
     ...mirrored,

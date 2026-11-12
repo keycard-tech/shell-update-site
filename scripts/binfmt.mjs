@@ -44,40 +44,47 @@ export const UNITS_HEADER_SIZE = 64;
 export const UNITS_INDEX_LEN = 32;
 export const UNITS_UID_LEN = 16;
 
+// Buffer methods (toString with an encoding, compare) are what reads this format, so anything else — a
+// Uint8Array from a fetch, a subarray of one — is viewed as a Buffer rather than mishandled.
+const asBuffer = (file) => (Buffer.isBuffer(file) ? file : Buffer.from(file.buffer, file.byteOffset, file.byteLength));
+
 // The six fields the header writes — magic, format version, uid_len, row_count, salt, build version — with
 // the refusals in the order the spec reads them. The rest of the 64 bytes stay zero, so giving one a meaning
 // is a version bump rather than a reader silently reinterpreting a file an older reader accepted. No crypto,
 // so the fields stay readable without the pinned key.
 export const unitsHeader = (file) => {
-  if (file.length < UNITS_HEADER_SIZE + SIG_SIZE) throw new Error("too short to be an allowlist");
-  if (file.subarray(0, 4).toString("ascii") !== UNITS_MAGIC) throw new Error(`magic is ${JSON.stringify(file.subarray(0, 4).toString("ascii"))}, not ${UNITS_MAGIC}`);
+  const bytes = asBuffer(file);
 
-  const format = file.readUInt16LE(4);
+  if (bytes.length < UNITS_HEADER_SIZE + SIG_SIZE) throw new Error("too short to be an allowlist");
+  if (bytes.subarray(0, 4).toString("ascii") !== UNITS_MAGIC) throw new Error(`magic is ${JSON.stringify(bytes.subarray(0, 4).toString("ascii"))}, not ${UNITS_MAGIC}`);
+
+  const format = bytes.readUInt16LE(4);
   if (format !== UNITS_FORMAT) throw new Error(`format version is ${format}, not ${UNITS_FORMAT}`);
 
-  const uidLen = file[6];
+  const uidLen = bytes[6];
   if (uidLen !== UNITS_UID_LEN) throw new Error(`uid length is ${uidLen}, not ${UNITS_UID_LEN}`);
-  if (file[7] !== 0 || file.subarray(32, UNITS_HEADER_SIZE).some((byte) => byte !== 0)) {
+  if (bytes[7] !== 0 || bytes.subarray(32, UNITS_HEADER_SIZE).some((byte) => byte !== 0)) {
     throw new Error("reserved header bytes are not zero");
   }
 
-  const rowCount = file.readUInt32LE(8);
+  const rowCount = bytes.readUInt32LE(8);
   const expected = UNITS_HEADER_SIZE + rowCount * UNITS_INDEX_LEN + SIG_SIZE;
-  if (file.length !== expected) throw new Error(`${file.length} bytes, header describes ${expected}`);
+  if (bytes.length !== expected) throw new Error(`${bytes.length} bytes, header describes ${expected}`);
   if (rowCount === 0) throw new Error("empty row array");
 
   // row_count includes padding rows and is not a device count; it is reported to whoever runs the sync,
   // never to a visitor.
-  return { version: String(file.readUInt32LE(28)), rowCount, salt: file.subarray(12, 28).toString("hex") };
+  return { version: String(bytes.readUInt32LE(28)), rowCount, salt: bytes.subarray(12, 28).toString("hex") };
 };
 
 // Every rule shell-units' own reader applies before it will search a file, so that the file we mirror is
 // one a browser will not refuse. The signature is the only attestation that a row was provisioned, so a
 // file that does not verify against the pinned key carries no information at all.
 export const readUnits = (file, verifyKey) => {
-  const header = unitsHeader(file);
-  const prefix = file.subarray(0, file.length - SIG_SIZE);
-  const signature = file.subarray(file.length - SIG_SIZE);
+  const bytes = asBuffer(file);
+  const header = unitsHeader(bytes);
+  const prefix = bytes.subarray(0, bytes.length - SIG_SIZE);
+  const signature = bytes.subarray(bytes.length - SIG_SIZE);
 
   let verified = false;
   try {
@@ -87,7 +94,7 @@ export const readUnits = (file, verifyKey) => {
   }
   if (!verified) throw new Error("signature does not match the pinned key");
 
-  const rows = file.subarray(UNITS_HEADER_SIZE, UNITS_HEADER_SIZE + header.rowCount * UNITS_INDEX_LEN);
+  const rows = bytes.subarray(UNITS_HEADER_SIZE, UNITS_HEADER_SIZE + header.rowCount * UNITS_INDEX_LEN);
   for (let row = 1; row < header.rowCount; row++) {
     // Padding rows repeat, so only a decrease is a violation.
     const descending = rows.compare(rows, row * UNITS_INDEX_LEN, (row + 1) * UNITS_INDEX_LEN, (row - 1) * UNITS_INDEX_LEN, row * UNITS_INDEX_LEN);

@@ -29,10 +29,11 @@ export namespace UIUtils {
     msgField.classList.contains("keycard_shell__display-none") && msg != "" ? msgField.classList.remove("keycard_shell__display-none") : msgField.classList.add("keycard_shell__display-none");
   }
 
-  export function addCameraSelectOption(selectField: HTMLSelectElement, options: CameraDevice[]) : void {
-    for(let i = 0; i < options.sort().length; i++) {
-      let option = new Option(options[i].label,options[i].id);
-      selectField.add(option, undefined);
+  // A laptop with a built-in webcam and an external one gets the choice, because the default is rarely
+  // the one pointing at a Shell screen.
+  export function addCameraSelectOption(selectField: HTMLSelectElement, cameras: CameraDevice[]) : void {
+    for (const camera of cameras) {
+      selectField.add(new Option(camera.label != "" ? camera.label : `Camera ${selectField.options.length + 1}`, camera.id));
     }
   }
 

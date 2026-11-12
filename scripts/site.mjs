@@ -33,22 +33,20 @@ export const ARTIFACTS = {
   database: "db.bin",
   units: "units.bin",
 };
-export const DOCUMENTS = ["get-firmware.json", "get-db.json", "get-firmwares.json", "get-dbs.json", "sync.json"];
-
-// Mirrored and verified whenever keycard-tech/shell-units has published one, and nothing on the site reads
-// it yet: its absence is a normal build, and a broken release is reported rather than fatal. Once a page
-// reads get-units.json it joins PAGE_DOCUMENTS, which is what makes its kind fatal to the sync.
-export const PROVISIONAL_DOCUMENTS = [{ kind: "units", document: "get-units.json" }];
+export const DOCUMENTS = ["get-firmware.json", "get-db.json", "get-units.json", "get-firmwares.json", "get-dbs.json", "sync.json"];
 
 // The key the SHVR allowlist signature is checked against. Pinned, and never taken from the origin the
 // file came from: shell-units' docs/format.md is explicit that a client doing that gains nothing.
 // The page that verifies a device imports the same file.
 export const UNITS_VERIFY_KEY = JSON.parse(readFileSync(new URL("../trust.json", import.meta.url))).unitsVerifyKey;
 
-// The documents an update page reads, and the release kind the artifacts they name come from.
+// The documents a page reads, and the release kind the artifacts they name come from. A kind is fatal
+// to the sync exactly when it appears here: a page cannot serve what was never certified, but a kind no
+// page reads is only worth a warning.
 export const PAGE_DOCUMENTS = [
   { kind: "firmware", document: "get-firmware.json" },
   { kind: "database", document: "get-db.json" },
+  { kind: "units", document: "get-units.json" },
 ];
 
 // The artifacts a document names, by path relative to itself and by the hash it publishes for them.

@@ -7,13 +7,15 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
+    "allowJs": true,
     "types": ["node"],
     "strict": true,
     "noImplicitAny": true,
     "noEmit": true,
-    "rootDir": "./src/js",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "sourceMap": true
   },
-  "include": ["./src/js/**/*.ts"],
+  "include": ["./src/js/**/*.ts", "./test/**/*.ts"],
   "exclude": ["node_modules", "dist", "pages", "media", ".parcel-cache"]
 }

@@ -1,22 +1,31 @@
 export namespace TextStr {
-    /* Verify Device Consts */
+    /* Verifying a Shell. Three outcomes, three sentences: a key that is in the allowlist, a correctly
+       signed response from a key that is not in it, and a response this page could not check at all. The
+       old copy merged the last two into "not authentic", which sends someone with a camera glitch to
+       report a counterfeit device. */
     export const verifyAuthenticHeading = "Your Shell is authentic";
-    export const verifyNotAuthenticHeading = "Your Shell is not authentic";
+    export const verifyAuthenticPrompt = "This Shell signed a fresh challenge with a key that is in the list signed by the Keycard provisioning key.";
+    export const verifyNotRegisteredHeading = "Your Shell is not in the allowlist";
+    export const verifyNotRegisteredPrompt = "The response was correctly signed, but no row matches this key and uid. Check Keycard Shell documentation for more details or contact us.";
     export const verifyErrorHeading = "Shell was not verified";
-    export const redeemSuccessHeading = "Redeem success";
-    export const redeemErrorHeading = "Redeem failed";
+    export const verifyErrorPrompt = "Something went wrong. Go to Settings/Shell/Verify on your Shell and try again.";
 
-    export const verifySuccessPrompt = "Scan the QR code with your Shell to verify the site hasn't been compromised by malicious extensions or viruses.";
-    export const verifyFailPrompt = "Check Keycard Shell documentation for more details or contact us.";
-    export const verifyErrorPrompt = "Something went wrong. Go to Settings/Device/ Verification on your Shell and try again.";
-    export const redeemSuccessPrompt = `Thank you for redeeming your code.<br>Scan the QR code with your Shell to verify the site hasn't been compromised by malicious extensions or viruses.`;
+    export const allowlistAbsent = "This site is serving no allowlist, so no Shell can be checked here.";
+    export const allowlistRefused = "The allowlist this site serves does not verify against the key this page was built with, so nothing can be concluded from it.";
 
+    // row_count is padded and is not a device count, so it stays out of what a visitor reads; the sync
+    // log is where it belongs. The version is here because a support conversation needs to know which
+    // list was checked.
+    export const allowlistVersion = (version: string) => `Checked against allowlist ${version}.`;
+
+    export const scanning = "Scanning...";
+
+    export const btnDone = "Done";
     export const btnTryAgain = "Try again";
     export const btnLearnMore = "Learn more";
 
-    export const zoomPrompt = 'If you have issues scanning the QR, try to zoom in.';
 
-    export const stepPrompt = `Go to Go to Settings/Shell/Verify on your Shell and scan this QR to initiate the device verification.<br>`;
+    export const zoomPrompt = 'If you have issues scanning the QR, try to zoom in.';
 
     /* Update ERC20 Consts */
 

@@ -3,7 +3,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DB_MAGIC, databaseMagic, databaseVersion, firmwareVersion, readUnits, sha256 } from "./binfmt.mjs";
-import { ARTIFACTS, PAGES, URLS, PAGE_DOCUMENTS, PROVISIONAL_DOCUMENTS, UNITS_VERIFY_KEY, artifactsOf, at, linkOf, prefix } from "./site.mjs";
+import { ARTIFACTS, PAGES, URLS, PAGE_DOCUMENTS, UNITS_VERIFY_KEY, artifactsOf, at, linkOf, prefix } from "./site.mjs";
 import { listen } from "./serve-site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,7 +49,6 @@ const versionInside = (kind, bytes) => {
 };
 
 const documents = new Map();
-const mediaPrefixes = new Set();
 const ARTIFACT_NAMES = new Set(Object.values(ARTIFACTS));
 
 for (const page of PAGES) {
@@ -76,8 +75,6 @@ for (const page of PAGES) {
   const mediaPrefix = value?.[3] ?? value?.[4];
 
   if (mediaPrefix !== undefined) {
-    mediaPrefixes.add(mediaPrefix);
-
     for (const { document } of PAGE_DOCUMENTS) {
       const fetched = await get(new URL(mediaPrefix + document, landed.url).href);
 
@@ -119,19 +116,6 @@ for (const { kind, document } of PAGE_DOCUMENTS) {
 
   if (read === undefined) fail(document, "never fetched by any page");
   else await checkChain(document, kind, read.at, read);
-}
-
-// Nothing links a provisional document yet, so it is looked for at the media prefix it is served from:
-// not published is a normal answer, published has to hold up.
-for (const { kind, document } of PROVISIONAL_DOCUMENTS) {
-  for (const media of mediaPrefixes) {
-    const url = new URL(document, new URL(media, origin + BASE)).href;
-    const response = await get(url);
-
-    if (response.status === 404) console.log(`${document}: not published`);
-    else if (response.status !== 200) fail(document, `${response.status} at ${url.slice(origin.length)}`);
-    else await checkChain(document, kind, url, JSON.parse(Buffer.from(await response.body()).toString()));
-  }
 }
 
 await close();

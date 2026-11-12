@@ -2659,3 +2659,58 @@ body {
    transition-delay: .5s;
 }
 
+
+/* Verifying a Shell */
+
+/* The challenge is ready before the allowlist is, so it is shown blurred rather than hidden: what is
+   happening stays legible in the place the code will be, and nothing scans out of a blurred QR. */
+.keycard_shell__qr-frame {
+    position: relative;
+}
+
+/* The zoom slider the camera step builds for itself; the container is the markup's, and centred like
+   everything else in that column. Centred by margin rather than flex on purpose: `.keycard_shell__
+   display-none` is a plain `display: none` in the middle of this file, and any rule after it that gives
+   an element a display of its own wins and makes that element impossible to hide. */
+.keycard_shell__camera-zoom-container {
+    width: 100%;
+}
+
+.keycard_shell__camera-zoom-container .keycard_shell__zoom-container {
+    margin-inline: auto;
+}
+
+.keycard_shell__qr-blurred {
+    filter: blur(10px);
+}
+
+/* The hide utility is a plain `display: none` earlier in this file, and this rule is later and sets a
+   display of its own, so the utility alone could never hide this overlay — the loading message would sit
+   over a finished page forever. Naming both classes outranks either, whichever order they are written in. */
+.keycard_shell__qr-loading.keycard_shell__display-none {
+    display: none;
+}
+
+.keycard_shell__qr-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 40px;
+    box-sizing: border-box;
+    font-family: var(--text-font-inter);
+    font-size: var(--text-14);
+}
+
+/* Which allowlist was checked and what it matched is true of every verdict and is not what anyone came
+   to read, so it sits under the sentence at footnote weight. */
+.keycard_shell__verify-detail {
+    margin-top: 8px;
+    font-family: var(--text-font-inter);
+    font-size: var(--text-12);
+    line-height: var(--text-line-height-20);
+    color: var(--white-60);
+    word-break: break-word;
+}

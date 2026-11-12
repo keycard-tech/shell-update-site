@@ -3,8 +3,7 @@
 import { cp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ARTIFACTS, DOCUMENTS, PAGE_DOCUMENTS, PROVISIONAL_DOCUMENTS, artifactsOf } from "./site.mjs";
-import { existsSync } from "node:fs";
+import { ARTIFACTS, DOCUMENTS, PAGE_DOCUMENTS, artifactsOf } from "./site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MIRROR = resolve(ROOT, process.argv[2] ?? "pages/media");
@@ -30,12 +29,10 @@ if ((await missing(["index.html"], DIST)).length > 0) {
   process.exit(1);
 }
 
-// Every artifact a document names has to be there, and inside media/: anywhere else is the same 404. A
-// provisional document is held to the same rule when it exists, and to none when it does not.
-const published = [...PAGE_DOCUMENTS, ...PROVISIONAL_DOCUMENTS.filter(({ document }) => existsSync(join(MIRROR, document)))];
+// Every artifact a document names has to be there, and inside media/: anywhere else is the same 404.
 const artifacts = [];
 
-for (const { document } of published) {
+for (const { document } of PAGE_DOCUMENTS) {
   for (const { path } of artifactsOf(JSON.parse(await readFile(join(MIRROR, document), "utf8")))) {
     if (!Object.values(ARTIFACTS).includes(path)) throw new Error(`${document} names ${path}, which is not a mirrored artifact`);
 

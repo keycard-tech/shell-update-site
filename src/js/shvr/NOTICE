@@ -1,0 +1,35 @@
+src/js/shvr/ holds the SHVR reader, ported from keycard-tech/shell-units web/ at tag 20261112 (that
+project's own code, MIT), in these files and with these changes:
+
+  errors.ts   web/errors.js        — no change but types and this header
+  cbor.ts     web/cbor.js          — no change but types and this header
+  ur.ts       web/ur.js            — imports bytewords from @blockchaincommons/uniform-resources/bytewords
+                                     instead of their vendor bundle, and folds the body to lower case
+                                     before decoding, which is what their bundle's decoder does
+  db.ts       web/db.js            — imports secp256k1, sha256 and the byte helpers from @noble/*
+                                     instead of their vendor bundle; drops an unused constant; drops
+                                     a prehash option that noble 2.4's recoverPublicKey does not take
+
+Relative imports end in .ts rather than .js, because Node runs the tests by stripping types and
+resolves a specifier exactly as written.
+
+Their web/dist/*.js vendor bundles are not used here: Parcel builds the same packages directly.
+
+  @noble/curves                        2.4.0        MIT
+  @noble/hashes                        2.4.0        MIT
+  @blockchaincommons/uniform-resources 1.0.0-beta.5 BSD-2-Clause-Patent  (bytewords, from the authors of
+                                                                        the BCR-2020-012 spec the
+                                                                        firmware implements)
+  html5-qrcode                         2.3.8        MIT        (the page's camera, not this reader's)
+  qrious                               4.0.2        MIT        (the page's QR canvas, same)
+
+Upstream's page takes bytewords from @qntx/ur. This site does not: a package with one maintainer and a
+handful of downloads a month is not evidence that its table and checksum were checked, and bytewords
+sits between the device and the signature. The substitution is safe because the wire format is pinned
+by test/verify.test.ts against things other than itself — CRC-32 re-derived with node:zlib, the framing
+rules the device applies, and the 256-word table read out of upstream's own vendor bundle at 20261112,
+whose words and minimal spellings these are identical to.
+
+docs/format.md in shell-units is the spec this code implements. test/verify.test.ts is ported from
+that repo's tests/verify.test.mjs against these fixtures, so a divergence between this port and
+upstream shows up as a failing test rather than as a difference nobody noticed.

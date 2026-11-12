@@ -2,35 +2,90 @@
 {% load static %}
 {% block title %}Verify{% endblock title %}
 {% block content %}
+<input type="hidden" id="device_verify__media-prefix" name="media-prefix" value="{% get_media_prefix %}">
 <div class="keycard_shell__page-heading-container">
     <h1 class="keycard_shell__page-heading">Verify authenticity of Shell</h1>
 </div>
 <div class="keycard_shell__page-top-container">
     <div class="keycard_shell__page-top-text-container">
-        <span class="keycard_shell__page-top-text">Device verification is currently unavailable. An updated process is in development and will be available soon.</span>
+        <span class="keycard_shell__page-top-text" id="page-top-text">Ensure your Shell is authentic.</span>
+        <span>The check happens in this page, against the signed list of devices that left the factory — nothing is sent anywhere.<br>Follow the instructions below, or if you need help read this <a href="https://keycard.tech/help/verify-keycard-shell-authenticity" class="keycard_shell__page-top-help-link">article</a>.</span>
     </div>
 </div>
 <div class="keycard_shell__device-container">
-    <div class="keycard_shell__verify-step">
+    <div id="kpro_web__verify-step1" class="keycard_shell__verify-step">
         <div class="keycard_shell__verify-action-container">
             <div class="keycard_shell__h2-container keycard_shell__step-action-el">
-                <h2 class="keycard_shell__h2">Under construction</h2>
+                <h2 class="keycard_shell__h2">Scan QR</h2>
             </div>
             <div class="keycard_shell__action-prompt-container keycard_shell__step-action-el">
-                <p class="keycard_shell__action-prompt">We are developing an updated process to confirm the authenticity of a Keycard Shell. It will be available soon.</p>
+                <p class="keycard_shell__action-prompt">Go to <span class="keycard_shell__bold">Settings/Shell/Verify</span> on your Shell and scan this QR to initiate the device verification.</p>
             </div>
-            <div class="keycard_shell__enable-camera-container keycard_shell__step-action-el" style="background-color: #ffffff">
-                <img src="{% static 'keycard_shell/img/qr-code.svg' %}" class="keycard_shell__enable-camera-img" alt="Shell QR code">
-            </div>
-            <div class="keycard_shell__device-verification-warning-container keycard_shell__step-action-el">
-                <div class="keycard_shell__device-verification-warning-icon-container">
-                    <img src="{% static 'keycard_shell/img/warning.svg' %}" alt="Warning" class="keycard_shell__device-verification-warning-icon">
+            <div class="keycard_shell__qr-container keycard_shell__step-action-el">
+                <div class="keycard_shell__qr-frame" id="device_verify__qr-frame">
+                    <canvas class="keycard_shell__qr keycard_shell__qr-blurred" id="device_verify__qr"></canvas>
+                    <div class="keycard_shell__qr-loading" id="device_verify__qr-loading">
+                        <span class="keycard_shell__scanning-effect" id="device_verify__loading-message">Loading the allowlist…</span>
+                    </div>
                 </div>
-                <div class="keycard_shell__device-verification-warning-prompt-container">
-                    <span class="keycard_shell__device-verification-warning-prompt">If you need to verify your Shell, <a href="https://discord.com/invite/uJAXk7jFhZ" class="keycard_shell__device-verification-warning-link">contact us</a>  to go through the process together.</span>
+            </div>
+            <div class="keycard_shell__btn-container keycard_shell__step-action-el">
+                <input id="device_verify__next-button" class="keycard_shell__btn" type="button" value="Continue" disabled>
+            </div>
+        </div>
+    </div>
+    <div id="kpro_web__verify-step2" class="keycard_shell__verify-step keycard_shell__display-none">
+        <div class="keycard_shell__verify-action-container">
+            <div class="keycard_shell__h2-container keycard_shell__step-action-el">
+                <h2 class="keycard_shell__h2">Enable camera</h2>
+            </div>
+            <div class="keycard_shell__action-prompt-container keycard_shell__step-action-el">
+                <p class="keycard_shell__action-prompt">Enable camera on you current device and scan Shell QR to finalize the authenticity verification.</p>
+            </div>
+            <div class="keycard_shell__enable-camera-container keycard_shell__step-action-el">
+                <img src="{% static 'keycard_shell/img/camera.svg' %}" class="keycard_shell__enable-camera-img"alt="Camera">
+            </div>
+            <div class="keycard_shell__btn-container keycard_shell__step-action-el">
+                <input id="device_verify__scan-button" class="keycard_shell__btn" type="button" value="Enable Camera">
+            </div>
+        </div>
+    </div>
+    <div id="kpro_web__verify-step3" class="keycard_shell__verify-step keycard_shell__display-none">
+        <div class="keycard_shell__verify-action-container">
+            <div class="keycard_shell__h2-container keycard_shell__step-action-el">
+                <h2 class="keycard_shell__h2">Now scan Shell QR</h2>
+            </div>
+            <div class="keycard_shell__action-prompt-container keycard_shell__step-action-el">
+                <p class="keycard_shell__action-prompt">Scan Shell QR to finalize the authenticity verification.</p>
+            </div>
+            <div id="device_verify__qr-reader" class="device_verify__scan-container keycard_shell__step-action-el"></div>
+            <div class="keycard_shell__camera-selector-container">
+                <select name="cameras" id="camera-selector" class="keycard_shell__camera-selector"></select>
+            </div>
+            <div class="keycard_shell__camera-zoom-container" id="camera-zoom-container"></div>
+            <div class="keycard_shell__scanning-msg-container keycard_shell__step-action-el">
+                <div class="keycard_shell__scanning-msg">
+                    <span class="keycard_shell__scanning-effect" id="device_verify__scanning-message">Scanning...</span>
                 </div>
             </div>
         </div>
     </div>
+    <div id="kpro_web__verify-step4" class="keycard_shell__verify-step keycard_shell__display-none">
+        <div class="keycard_shell__verify-action-container">
+            <div class="keycard_shell__h2-container keycard_shell__step-action-el">
+                <h2 class="keycard_shell__h2" id="verify-result-heading"></h2>
+            </div>
+            <div class="keycard_shell__action-prompt-container keycard_shell__step-action-el">
+                <p class="keycard_shell__action-prompt" id="verify-result-prompt"></p>
+                <div class="keycard_shell__verify-detail" id="device_verify__result-detail"></div>
+            </div>
+            <div class="keycard_shell__btn-container keycard_shell__step-action-el">
+                <a href="" id="device_verify__scan-finished-link">
+                    <input id="device_verify__scan-finished" class="keycard_shell__btn" type="button" value="Done">
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
+<script type="module" src="{% static '/keycard_shell/js/verify.js' %}"></script>
 {% endblock %}

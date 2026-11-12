@@ -24,18 +24,25 @@
     "postbuild": "node scripts/install-media.mjs",
     "serve": "node scripts/serve-site.mjs",
     "check": "node scripts/check-site.mjs",
+    "test": "node --test test/",
     "typecheck": "tsc --noEmit"
   },
+  "alias": {
+    "@blockchaincommons/uniform-resources/bytewords": "@blockchaincommons/uniform-resources/dist/bytewords.mjs"
+  },
   "dependencies": {
+    "@blockchaincommons/uniform-resources": "^1.0.0-beta.5",
     "@choppu/shelljs": "^2.0.0",
     "@choppu/shelljs-web-hid": "^2.0.0",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
     "buffer": "^6.0.3",
     "events": "^3.3.0",
     "html5-qrcode": "^2.3.8",
-    "marked": "^18.2.0"
+    "marked": "^18.2.0",
+    "qrious": "^4.0.2"
   },
   "devDependencies": {
-    "@noble/curves": "^2.4.0",
     "@types/node": "^26.0.0",
     "parcel": "^2.16.4",
     "typescript": "^6.0.3"

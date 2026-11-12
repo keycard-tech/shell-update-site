@@ -1830,15 +1830,23 @@ body {
     margin-bottom: 10px;
 }
 
-.keycard_shell__relese-notes-container ul {
-    list-style: outside circle;
+/* the reset zeroes a list's own spacing, which left its items touching the text above and below them */
+.keycard_shell__relese-notes-container ul,
+.keycard_shell__relese-notes-container ol {
+    margin: 12px 0;
     padding-left: 20px;
     box-sizing: border-box;
     color: var(--white-80);
     font-family: var(--text-font-inter);
 }
 
-.keycard_shell__relese-notes-container ul li {
+/* ol is left alone, so it keeps its numbers */
+.keycard_shell__relese-notes-container ul {
+    list-style: outside circle;
+}
+
+.keycard_shell__relese-notes-container ul li,
+.keycard_shell__relese-notes-container ol li {
     line-height: var(--text-line-height);
     letter-spacing: var(--text-letter-spacing);
     padding-left: 8px;

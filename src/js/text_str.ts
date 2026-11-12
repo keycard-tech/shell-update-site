@@ -34,7 +34,7 @@ export namespace TextStr {
     export const startScreenHeadingDesktop = "Connect your Keycard Shell";
     export const startScreenHeadingMobile = "Connect via cable";
 
-    export const startScreenPromptDesktop = "Unlock device before connecting via USB-C cable";
+    export const startScreenPromptDesktop = "Unlock your Shell, then connect it with a USB-C cable.";
     export const startScreenPromptMobile = "Connect your Keycard Shell via USB-C cable";
 
     export const latest = "Up to date";

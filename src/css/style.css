@@ -2681,3 +2681,123 @@ body {
    transition-delay: .5s;
 }
 
+
+/* ==== Owner's Hub: the home page ==== */
+/* Schibsted Grotesk, as on keycard.tech. Self-hosted, Latin set, three weights (licence: src/fonts/OFL.txt) */
+@font-face {
+    font-family: 'Schibsted Grotesk';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/schibsted-grotesk-400-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Schibsted Grotesk';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../fonts/schibsted-grotesk-600-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Schibsted Grotesk';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('../fonts/schibsted-grotesk-700-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+.hub {
+    /* three text tones, one accent, one line colour */
+    --hub-text-1: #F3F4F2;
+    --hub-text-2: rgba(243, 244, 242, .76);
+    --hub-text-3: rgba(243, 244, 242, .58);
+    --hub-line: rgba(255, 255, 255, .10);
+    --hub-surface: rgba(255, 255, 255, .035);
+    --hub-orange: #FF6400;
+    --hub-orange-soft: rgba(255, 100, 0, .14);
+    --hub-font: 'Schibsted Grotesk', var(--text-font-inter);
+    /* type scale: 14 / 16 / 18 / 28 / 32 / 44 / 64 */
+    width: 100%;
+    color: var(--hub-text-1);
+    font-family: var(--hub-font);
+}
+
+.hub-h1, .hub-h2, .hub-tool-title, .hub-dyk-title { font-family: var(--hub-font); font-weight: 700; letter-spacing: -0.03em; color: var(--hub-text-1); text-wrap: balance; }
+.hub-lead, .hub-tool-text, .hub-dyk-lead, .hub-point-text, .hub-guide-text { text-wrap: pretty; }
+
+/* hero: a small product shot beside the title */
+.hub-hero { display: flex; align-items: center; gap: 40px; padding: 48px 0 8px; }
+.hub-hero-img { flex: 0 0 auto; height: 232px; width: auto; mix-blend-mode: lighten; }
+.hub-h1 { margin: 0; font-size: 64px; line-height: 1.05; }
+.hub-lead { margin: 16px 0 0; max-width: 34ch; font-size: 20px; line-height: 1.5; color: var(--hub-text-2); }
+
+/* sections, 104px apart */
+.hub-section { margin-top: 104px; }
+.hub-h2 { margin: 0 0 32px; font-size: 44px; line-height: 1.1; }
+
+/* the two tools: the strongest objects on the page */
+.hub-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.hub-tool { display: flex; flex-direction: column; align-items: flex-start; padding: 32px; border-radius: var(--container-border-radius); border: 1px solid rgba(255, 100, 0, .32); background: radial-gradient(130% 120% at 0% 0%, rgba(255, 100, 0, .16), transparent 60%), var(--hub-surface); color: inherit; transition: border-color .15s ease; }
+.hub-tool:hover { border-color: var(--hub-orange); }
+.hub-tool-title { font-size: 28px; line-height: 1.2; }
+.hub-tool-text { margin-top: 8px; font-size: 16px; line-height: 1.6; color: var(--hub-text-2); }
+.hub-tool-btn { display: inline-flex; align-items: center; height: 48px; width: auto; margin-top: 28px; padding: 0 28px; font-family: var(--hub-font); font-size: 16px; font-weight: 600; }
+
+/* Did you know?: an aside that explains the tools, marked by an orange rule on its left */
+.hub-dyk { margin-top: 40px; padding: 32px 40px; border-left: 3px solid var(--hub-orange); border-radius: 0 var(--border-radius-20) var(--border-radius-20) 0; background: linear-gradient(90deg, rgba(255, 100, 0, .08), rgba(255, 255, 255, .02) 40%); }
+.hub-dyk-kicker { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--hub-orange); }
+.hub-dyk-title { margin: 8px 0 0; font-size: 32px; line-height: 1.2; }
+.hub-dyk-lead { margin: 12px 0 0; max-width: 60ch; font-size: 18px; line-height: 1.6; color: var(--hub-text-2); }
+.hub-points { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; margin-top: 36px; padding-top: 32px; border-top: 1px solid var(--hub-line); }
+.hub-point { display: flex; flex-direction: column; align-items: flex-start; }
+.hub-point-icon { width: 40px; height: 40px; padding: 8px; box-sizing: border-box; border-radius: 12px; background: var(--hub-orange-soft); color: var(--hub-orange); }
+.hub-point-title { margin: 16px 0 0; font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--hub-text-1); }
+.hub-point-text { margin: 6px 0 0; font-size: 15px; line-height: 1.6; color: var(--hub-text-3); }
+.hub-pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); font-size: 14px; line-height: 1.4; color: var(--hub-text-1); transition: border-color .15s ease; }
+.hub-pill:hover { border-color: var(--hub-orange); }
+.hub-pill-icon { width: 14px; height: 14px; }
+
+/* guides: quiet, a list with hairlines */
+.hub-guides { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
+.hub-guide { display: flex; flex-direction: column; padding-top: 20px; border-top: 1px solid var(--hub-line); color: inherit; transition: border-color .15s ease; }
+.hub-guide:hover { border-top-color: var(--hub-orange); }
+.hub-guide-title { font-size: 18px; font-weight: 600; line-height: 1.4; color: var(--hub-text-1); }
+.hub-guide-text { margin-top: 6px; font-size: 15px; line-height: 1.6; color: var(--hub-text-3); }
+
+.hub a:focus-visible { outline: 2px solid var(--hub-orange); outline-offset: 4px; }
+
+@media (max-width: 959px) {
+    .hub-hero { flex-direction: column; align-items: flex-start; gap: 24px; padding-top: 24px; }
+    .hub-hero-img { height: 180px; }
+    .hub-h1 { font-size: 48px; }
+    .hub-lead { font-size: 18px; }
+    .hub-section { margin-top: 72px; }
+    .hub-h2 { font-size: 34px; margin-bottom: 24px; }
+    .hub-tools { grid-template-columns: 1fr; gap: 16px; }
+    .hub-points, .hub-guides { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+}
+@media (max-width: 600px) {
+    .hub-h1 { font-size: 44px; }
+    .hub-tool { padding: 24px; }
+    .hub-dyk { padding: 24px 20px; }
+    .hub-tool-title { font-size: 24px; }
+    .hub-dyk-title { font-size: 26px; }
+    .hub-dyk-lead { font-size: 16px; }
+    .hub-points, .hub-guides { grid-template-columns: 1fr; gap: 24px; }
+}
+
+/* ==== Update page: start screen ==== */
+.keycard_shell__update-hint { display: block; margin-top: 10px; font-family: var(--text-font-inter); font-size: var(--text-13); line-height: var(--text-line-height-20); color: var(--white-40); text-align: center; }
+.keycard_shell__update-prompt-container { text-wrap: balance; }
+@media (min-width: 960px) {
+    /* the start screen grows past its fixed 650px to fit the browser line */
+    #start-update-screen { height: auto; min-height: 650px; }
+    #keycard_shell__update-start-button { height: auto; }
+    #start-screen-btn { height: 40px; }
+    /* the instruction on two short lines, and the title a little lower on the picture */
+    .keycard_shell__update-prompt-container { width: auto; max-width: 340px; height: auto; }
+    .keycard_shell__start-update-text-container { margin-top: -96px; }
+}

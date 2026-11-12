@@ -45,21 +45,35 @@ Or: Actions → *sync and deploy* → **Run workflow**.
 
 ## 3. On a schedule, as a backstop
 
-The workflow also runs every 15 minutes, so a release that slipped through 1 or 2 is picked up on
-its own. GitHub delays scheduled runs by a few minutes under load and stops running them on
-repositories inactive for 60 days, which is why 1 or 2 remain the primary path.
+The workflow also runs every 15 minutes, so a release that slipped through 1 or 2 is picked up on its own —
+but a schedule is the slowest of the three paths, and until `upstream-release-trigger.yml` is installed in both
+upstream repos it is the only one:
+
+- GitHub does not start scheduled runs on the dot. Under load a run scheduled for `:00` can start many
+  minutes later, and a run scheduled for a popular minute waits behind everyone else's.
+- `concurrency.group: pages` with `cancel-in-progress: false` means a run started while another is still going
+  waits for it rather than racing it.
+- The sync itself waits up to `SYNC_UPLOAD_ATTEMPTS` × `SYNC_UPLOAD_DELAY_SECONDS` (5 × 60 s) when the newest
+  release has started publishing but has not finished, which is common because a release is uploaded from more
+  than one job.
+- The deployment at the end takes another minute or so.
+
+GitHub also stops running schedules on repositories inactive for 60 days, which is why 1 or 2 remain the
+primary path.
 
 ## What a run does
 
-Every run re-reads both repositories and rewrites the whole mirror, so a single dispatch refreshes
-firmware and database together; there is nothing to select per release. It writes binaries first and
-the JSON documents last, and verifies each artifact against the checksum the release publishes
-(`tools/firmware-hash.py` and `tools/database-hash.py` algorithms, the same ones the bootloader and
-the device use), so a release that does not match its own checksum stops the run.
+Every run re-reads both repositories and rebuilds the whole mirror in `pages/media.tmp`, so a single dispatch
+refreshes firmware and database together; there is nothing to select per release. Each artifact is verified
+against the checksum the release publishes (`tools/firmware-hash.py` and `tools/database-hash.py` algorithms,
+the same ones the bootloader and the device use) and against the version inside the binary, and the new mirror
+is swapped in only once both sides are done — a run that fails leaves the previous mirror and the previous
+site exactly as they were. `npm run check` then walks the built site, and the deploy step never runs without it.
 
-A failing run leaves the previous site live rather than publishing half a mirror. The error names the
-release and the file, for instance when an asset is renamed and no longer matches `ARTIFACTS` in
-`scripts/sync-upstream.mjs`.
+A release that cannot be verified is not the same as a corrupted one. If the newest release has not finished
+uploading — no `*-sha256.txt` yet, or one that does not name the image — the run waits, then mirrors the last
+complete release and records the refusal in `media/sync.json` under `incomplete`. A checksum that disagrees
+stops the run.
 
 To ask the same question without building anything:
 
@@ -78,7 +92,7 @@ database: upstream 20261111, mirrored 20261111 (out of date)
 | `get-db.json` | latest database release | the same two pages |
 | `get-firmwares.json` | every firmware release | `release-notes.html` |
 | `get-dbs.json` | every database release | `db-version-history.html` |
-| `firmware.bin`, `db.bin` | latest releases, overwritten in place | transferred to the device |
+| `firmware.bin`, `db.bin` | latest verified release | transferred to the device |
 | `changelogs/<version>.md` | the body of every firmware release | `release-notes.html` |
 | `sync.json` | provenance for the logs and `--dry-run` | nothing at runtime |
 

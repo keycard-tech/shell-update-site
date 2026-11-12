@@ -1,53 +1,34 @@
-// Renders the upstream Django templates into flat sibling pages/, implementing only the tags they use.
+// Renders the upstream Django templates into the URL tree of scripts/site.mjs, using only the tags they use.
 
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MEDIA, PAGES, STATIC_ROOTS, URLS, at } from "./site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TEMPLATES = join(ROOT, "templates");
 const OUTPUT = join(ROOT, "pages");
 
-const STATIC_ROOTS = { "keycard_shell/": "src/", "admin/img/": "src/img/" };
-const MEDIA = "media/";
-
-const URLS = {
-  "landing": "index.html",
-  "db:update-index": "update.html",
-  "db:air-gapped-update": "air-gapped.html",
-  "db:db-version-history": "db-version-history.html",
-  "firmware:release-notes": "release-notes.html",
-  "device:verify-index": "https://shell.keycard.tech/verify/",
-};
-
-const PAGES = [
-  { template: "landing.html", url: "index.html" },
-  { template: "shell_update.html", url: "update.html" },
-  { template: "air_gapped_update.html", url: "air-gapped.html" },
-  { template: "db_version_history.html", url: "db-version-history.html" },
-  { template: "fw_release_notes.html", url: "release-notes.html" },
-];
-
 const BLOCK = /{%\s*block\s+(\w+)\s*%}([\s\S]*?){%\s*endblock(?:\s+\w+)?\s*%}/g;
 const INCLUDE = /{%\s*include\s+'([^']+)'\s*%}/g;
 
-function staticPath(name) {
+function staticPath(name, depth) {
   const clean = name.replace(/^\//, "");
   const prefix = Object.keys(STATIC_ROOTS).find((root) => clean.startsWith(root));
 
   if (prefix === undefined) throw new Error(`${name} is not in STATIC_ROOTS`);
 
-  return `../${STATIC_ROOTS[prefix]}${clean.slice(prefix.length).replace(/\.js$/, ".ts")}`;
+  return `${"../".repeat(depth)}${STATIC_ROOTS[prefix]}${clean.slice(prefix.length).replace(/\.js$/, ".ts")}`;
 }
 
-function resolveTags(html) {
+function resolveTags(html, depth) {
   return html
-    .replace(/{%\s*static\s+'([^']+)'\s*%}/g, (_, name) => staticPath(name))
+    .replace(/{%\s*static\s+'([^']+)'\s*%}/g, (_, name) => staticPath(name, depth))
     .replace(/{%\s*url\s+'([^']+)'\s*%}/g, (_, name) => {
       if (URLS[name] === undefined) throw new Error(`${name} is not in URLS`);
-      return URLS[name];
+      return at(URLS[name]);
     })
-    .replace(/{%\s*get_media_prefix\s*%}/g, MEDIA)
+    .replace(/{%\s*get_media_prefix\s*%}/g, at(MEDIA))
     .replace(/{%\s*now\s+'Y'\s*%}/g, String(new Date().getFullYear()))
     .replace(/{%\s*(load|extends)[^%]*%}\n/g, "");
 }
@@ -65,18 +46,19 @@ async function renderPage(page) {
   const source = await readFile(join(TEMPLATES, page.template), "utf8");
   const defined = new Map([...source.matchAll(BLOCK)].map(([, name, body]) => [name, body]));
   const base = await readFile(join(TEMPLATES, "base.html"), "utf8");
+  const depth = page.path.split("/").length;
 
   const merged = base.replace(BLOCK, (_, name, body) => defined.get(name) ?? body);
 
-  return { html: resolveTags(await expandIncludes(merged)), title: (defined.get("title") ?? "").trim() };
+  return { html: resolveTags(await expandIncludes(merged), depth), title: (defined.get("title") ?? "").trim() };
 }
 
-await rm(OUTPUT, { recursive: true, force: true });
-
+// pages/media holds the mirrored artifacts, so rendering must not clear pages/: a sync that fails after
+// this point would otherwise leave the site with no firmware and no database. npm run clean does that.
 for (const page of PAGES) {
   const { html, title } = await renderPage(page);
 
-  await mkdir(OUTPUT, { recursive: true });
-  await writeFile(join(OUTPUT, page.url), html);
-  console.log(`${page.template} -> pages/${page.url} "${title}"`);
+  await mkdir(join(OUTPUT, dirname(page.path)), { recursive: true });
+  await writeFile(join(OUTPUT, page.path), html);
+  console.log(`${page.template} -> pages/${page.path} "${title}"`);
 }

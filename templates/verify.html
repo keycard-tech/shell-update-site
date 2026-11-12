@@ -1,0 +1,36 @@
+{% extends './base.html' %}
+{% load static %}
+{% block title %}Verify{% endblock title %}
+{% block content %}
+<div class="keycard_shell__page-heading-container">
+    <h1 class="keycard_shell__page-heading">Verify authenticity of Shell</h1>
+</div>
+<div class="keycard_shell__page-top-container">
+    <div class="keycard_shell__page-top-text-container">
+        <span class="keycard_shell__page-top-text">Device verification is currently unavailable. An updated process is in development and will be available soon.</span>
+    </div>
+</div>
+<div class="keycard_shell__device-container">
+    <div class="keycard_shell__verify-step">
+        <div class="keycard_shell__verify-action-container">
+            <div class="keycard_shell__h2-container keycard_shell__step-action-el">
+                <h2 class="keycard_shell__h2">Under construction</h2>
+            </div>
+            <div class="keycard_shell__action-prompt-container keycard_shell__step-action-el">
+                <p class="keycard_shell__action-prompt">We are developing an updated process to confirm the authenticity of a Keycard Shell. It will be available soon.</p>
+            </div>
+            <div class="keycard_shell__enable-camera-container keycard_shell__step-action-el" style="background-color: #ffffff">
+                <img src="{% static 'keycard_shell/img/qr-code.svg' %}" class="keycard_shell__enable-camera-img" alt="Shell QR code">
+            </div>
+            <div class="keycard_shell__device-verification-warning-container keycard_shell__step-action-el">
+                <div class="keycard_shell__device-verification-warning-icon-container">
+                    <img src="{% static 'keycard_shell/img/warning.svg' %}" alt="Warning" class="keycard_shell__device-verification-warning-icon">
+                </div>
+                <div class="keycard_shell__device-verification-warning-prompt-container">
+                    <span class="keycard_shell__device-verification-warning-prompt">If you need to verify your Shell, <a href="https://discord.com/invite/uJAXk7jFhZ" class="keycard_shell__device-verification-warning-link">contact us</a>  to go through the process together.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

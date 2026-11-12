@@ -20,6 +20,11 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# The path the site is served from. "/" because dist/CNAME puts it on a domain of its own; set it to
+# /shell-update-site/ to preview on the project page instead.
+env:
+  SITE_BASE: /
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,6 +38,7 @@ jobs:
       - run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run check
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist

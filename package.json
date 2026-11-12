@@ -6,20 +6,24 @@
   "license": "MIT",
   "source": [
     "pages/index.html",
-    "pages/update.html",
-    "pages/air-gapped.html",
-    "pages/db-version-history.html",
-    "pages/release-notes.html"
+    "pages/update/index.html",
+    "pages/update/air-gapped/index.html",
+    "pages/update/db-version-history/index.html",
+    "pages/firmware/release-notes/index.html",
+    "pages/verify/index.html"
   ],
   "scripts": {
-    "clean": "rm -rf dist pages .parcel-cache",
+    "clean": "rm -rf dist .parcel-cache",
+    "scrub": "rm -rf dist pages .parcel-cache .parcel-dev",
     "render": "node scripts/render-pages.mjs",
     "sync": "node scripts/sync-upstream.mjs",
     "prestart": "npm run render && npm run sync",
-    "start": "parcel pages/index.html",
-    "prebuild": "npm run clean && npm run render && npm run sync",
-    "build": "parcel build --no-source-maps --public-url ./",
-    "postbuild": "rm -rf dist/media && cp -r pages/media dist/media && touch dist/.nojekyll",
+    "start": "node scripts/dev.mjs",
+    "prebuild": "npm run sync && npm run render && rm -rf dist .parcel-cache",
+    "build": "parcel build --no-source-maps --public-url \"${SITE_BASE:-/}\"",
+    "postbuild": "node scripts/install-media.mjs",
+    "serve": "node scripts/serve-site.mjs",
+    "check": "node scripts/check-site.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

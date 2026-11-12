@@ -3,8 +3,8 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DB_FORMAT, DB_MAGIC, SIG_SIZE, databaseFormat, databaseMagic, databaseVersion, firmwareVersion, flashImage, sha256 } from "./binfmt.mjs";
-import { ARTIFACTS } from "./site.mjs";
+import { DB_FORMAT, DB_MAGIC, SIG_SIZE, databaseFormat, databaseMagic, databaseVersion, firmwareVersion, flashImage, readUnits, sha256, unitsHeader } from "./binfmt.mjs";
+import { ARTIFACTS, UNITS_VERIFY_KEY } from "./site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -52,6 +52,36 @@ const RELEASES = {
     ],
     flashHash: (file) => sha256(file.subarray(0, file.length - SIG_SIZE)),
     readVersion: releaseDatabase,
+  },
+  // The device allowlist. Its certification is the signature inside the file, checked against the pinned
+  // key, so unlike the other two it needs no sha256 file from the release — and gets one compared anyway if
+  // upstream ever starts publishing it. Its tag is the build date, which is the version the header carries:
+  // confirmed against 20261112, the first release, which uploads shell-verification-db.bin and nothing else.
+  units: {
+    repo: "keycard-tech/shell-units",
+    signed: true,
+    // shell-units may have nothing published; see PROVISIONAL_DOCUMENTS.
+    allowAbsence: true,
+    variants: [
+      {
+        id: "allowlist",
+        file: ARTIFACTS.units,
+        match: /^shell-verification-db\.bin$/,
+        checksumOf: (name) => name,
+        required: true,
+      },
+    ],
+    // The digest the signature covers: everything before the trailing 64 bytes, the same convention as the
+    // eth-db and the hash-and-check tools for it.
+    flashHash: (file) => sha256(file.subarray(0, file.length - SIG_SIZE)),
+    // Throws with the reason shell-units' own reader would refuse the file for.
+    readVersion: (file) => readUnits(file, UNITS_VERIFY_KEY).version,
+    // For the log and sync.json only: row_count is padded to a power of two and is not a device count.
+    describe: (file) => {
+      const { rowCount, salt } = unitsHeader(file);
+
+      return { rows: rowCount, salt };
+    },
   },
 };
 
@@ -146,8 +176,9 @@ async function publishedChecksums(release) {
 // A variant absent from the release is simply absent; one uploaded but unnamed by the checksum file means the upload is unfinished.
 async function readiness(kind, release) {
   const published = await publishedChecksums(release);
+  const signed = RELEASES[kind].signed === true;
 
-  if (published === undefined) return { ok: false, reason: "publishes no sha256 file" };
+  if (published === undefined && !signed) return { ok: false, reason: "publishes no sha256 file" };
 
   const images = [];
   const missing = [];
@@ -161,9 +192,15 @@ async function readiness(kind, release) {
       continue;
     }
 
-    const hash = published.get(variant.checksumOf(asset.name));
+    const hash = published?.get(variant.checksumOf(asset.name));
 
     if (hash === undefined) {
+      // Nothing to cross-check the download against, so verifyAndWrite's signature check is the certification.
+      if (signed) {
+        images.push({ variant, asset, published: undefined });
+        continue;
+      }
+
       if (variant.required) return { ok: false, reason: `${asset.name} is not in the published sha256 file` };
 
       missing.push(`${asset.name} is not in the published sha256 file`);
@@ -208,12 +245,22 @@ async function verifyAndWrite(kind, release, { variant, asset, published }) {
   const flashHash = RELEASES[kind].flashHash(data);
   const version = RELEASES[kind].readVersion(data);
 
-  if (published !== flashHash) throw new Error(`${asset.name}: ${flashHash} does not match the published ${published}`);
+  if (published !== undefined && published !== flashHash) throw new Error(`${asset.name}: ${flashHash} does not match the published ${published}`);
   if (version !== versionOf(release.tag_name)) throw new Error(`${asset.name}: carries version ${version}, its release is tagged ${release.tag_name}`);
 
   await write(variant.file, data);
 
-  return { id: variant.id, label: variant.label, device: variant.device, file: variant.file, asset: asset.name, size: asset.size, hash: sha256(data), flash_hash: flashHash };
+  return {
+    id: variant.id,
+    label: variant.label,
+    device: variant.device,
+    file: variant.file,
+    asset: asset.name,
+    size: asset.size,
+    hash: sha256(data),
+    flash_hash: flashHash,
+    ...(RELEASES[kind].describe?.(data) ?? {}),
+  };
 }
 
 // What a release offers to be flashed; a release without any, bootloader-only for instance, has nothing to announce.
@@ -222,6 +269,10 @@ const imagesIn = (kind, release) => RELEASES[kind].variants.flatMap((variant) =>
 // Newest first: mirror the first release that verifies, report the ones passed over, wait only on the newest.
 async function mirrorLatest(kind, published) {
   const skipped = [];
+
+  if (published.length === 0 && RELEASES[kind].allowAbsence === true) {
+    return { current: null, history: [], skipped: [], note: `${RELEASES[kind].repo} has published no release yet` };
+  }
 
   for (const [index, tagged] of published.entries()) {
     const { release, ready } = await awaitUpload(kind, tagged, index === 0 ? UPLOAD_ATTEMPTS : 0);
@@ -313,9 +364,50 @@ async function syncDatabase() {
   return { current: mirrored.current, skipped: mirrored.skipped, history };
 }
 
+// The device allowlist, mirrored when shell-units publishes one. Neither a missing file nor a broken
+// release fails the run: nothing on the site reads it yet, which is what PROVISIONAL_DOCUMENTS says, and
+// a page that reads it will make it fatal by joining PAGE_DOCUMENTS.
+async function syncUnits(previous) {
+  let mirrored;
+
+  try {
+    mirrored = await mirrorLatest("units", await releases("units"));
+  } catch (err) {
+    mirrored = { current: null, skipped: [], note: err.message };
+  }
+
+  if (mirrored.current !== null) {
+    await writeJson("get-units.json", { version: mirrored.current.version, variants: mirrored.current.variants.map(publicVariant) });
+
+    return mirrored;
+  }
+
+  // A page reading the allowlist is better served a stale file it can verify than none at all, so whatever
+  // is mirrored now — signed, and certified when it was taken — is carried into the new mirror. sync.json
+  // goes on describing the file that is actually served, with the reason this run could not do better.
+  const carried = ["get-units.json", ARTIFACTS.units].map((file) =>
+    readFile(join(MIRROR, file))
+      .then((data) => write(file, data))
+      .catch(() => null),
+  );
+
+  if ((await Promise.all(carried)).some((data) => data === null)) return mirrored;
+
+  const document = JSON.parse(await readFile(join(MIRROR, "get-units.json"), "utf8"));
+  const reason = mirrored.note ?? `${RELEASES.units.repo} has published no release`;
+
+  return {
+    ...mirrored,
+    current: previous?.units ?? { version: document.version, variants: document.variants },
+    skipped: [...mirrored.skipped, { kind: "units", tag: document.version, reason }],
+    kept: reason,
+  };
+}
+
 async function rebuild(previous) {
   const firmware = await syncFirmware();
   const database = await syncDatabase();
+  const units = await syncUnits(previous);
   const db = database.current.variants[0];
 
   // The documents name the artifacts, so they are written once every image is downloaded and verified.
@@ -327,7 +419,8 @@ async function rebuild(previous) {
     synced_at: new Date().toISOString(),
     firmware: firmware.current,
     database: database.current,
-    incomplete: [...firmware.skipped, ...database.skipped],
+    units: units.current,
+    incomplete: [...firmware.skipped, ...database.skipped, ...units.skipped],
   });
 
   // The old mirror moves aside rather than being deleted first, so there is never a moment with no mirror.
@@ -344,7 +437,20 @@ async function rebuild(previous) {
     console.log(`${kind}: ${current.version}${before && before !== current.version ? ` (was ${before})` : ""} ${current.variants.map((image) => `${image.file} ${image.hash}`).join(" ")}`);
   }
 
-  for (const { kind, tag, reason } of [...firmware.skipped, ...database.skipped]) console.warn(`${kind}: ${tag} was not mirrored (${reason})`);
+  for (const { kind, tag, reason } of [...firmware.skipped, ...database.skipped, ...units.skipped]) {
+    console.warn(`${kind}: ${tag} was not mirrored (${reason})`);
+  }
+
+  const { current, kept, note } = units;
+
+  if (current === null) {
+    console.log(`units: ${note ?? "nothing mirrored"}`);
+  } else {
+    const [{ file, hash, rows, salt }] = current.variants;
+    const detail = rows === undefined ? "" : ` (rows ${rows}, salt ${String(salt).slice(0, 8)}…)`;
+
+    console.log(`units: ${current.version} ${file} ${hash}${detail}${kept ? `, kept: ${kept}` : ""}`);
+  }
 }
 
 // What a page needs about one mirrored image: where it is, what it hashes to, and the fwVariant code of the device that runs it.
@@ -354,10 +460,20 @@ const previous = await readFile(join(MIRROR, "sync.json"), "utf8").then(JSON.par
 
 if (DRY_RUN) {
   for (const kind of Object.keys(RELEASES)) {
-    const version = versionOf((await releases(kind))[0].tag_name);
     const mirrored = previous?.[kind]?.version ?? "nothing";
 
-    console.log(`${kind}: upstream ${version}, mirrored ${mirrored}${mirrored === version ? " (up to date)" : " (out of date)"}`);
+    try {
+      const [latest] = await releases(kind);
+
+      console.log(
+        latest === undefined
+          ? `${kind}: ${RELEASES[kind].repo} has published no release`
+          : `${kind}: upstream ${versionOf(latest.tag_name)}, mirrored ${mirrored}${versionOf(latest.tag_name) === mirrored ? " (up to date)" : " (out of date)"}`,
+      );
+    } catch (err) {
+      // Not being allowed to ask is not the same as nothing being published.
+      console.log(`${kind}: ${err.message}, mirrored ${mirrored}`);
+    }
   }
 
   process.exit(0);
@@ -371,7 +487,9 @@ try {
   // Quota exhaustion is no verdict on the releases: keep the verified mirror, but never tolerate it when a token was sent.
   if (!rateLimited || token !== undefined || previous === null) throw err;
 
-  console.warn(`out of quota, keeping what is mirrored: firmware ${previous.firmware.version}, database ${previous.database.version}, synced ${previous.synced_at}`);
+  console.warn(
+    `out of quota, keeping what is mirrored: firmware ${previous.firmware.version}, database ${previous.database.version}, units ${previous.units?.version ?? "none"}, synced ${previous.synced_at}`,
+  );
   console.warn(`set GH_TOKEN to look for a newer release`);
   process.exit(0);
 }

@@ -1,5 +1,7 @@
 // The site's URL tree: the one place a page path, a link target, the media prefix or the site base is written.
 
+import { readFileSync } from "node:fs";
+
 export const BASE = process.env.SITE_BASE ?? "/";
 
 export const STATIC_ROOTS = { "keycard_shell/": "src/", "admin/img/": "src/img/" };
@@ -25,8 +27,23 @@ export const PAGES = [
 export const MEDIA = "media/";
 
 // The mirror the pages read: the artifacts under names that never change, and the documents that name them.
-export const ARTIFACTS = { firmware: "firmware.bin", firmwareBtc: "firmware-btc.bin", database: "db.bin" };
+export const ARTIFACTS = {
+  firmware: "firmware.bin",
+  firmwareBtc: "firmware-btc.bin",
+  database: "db.bin",
+  units: "units.bin",
+};
 export const DOCUMENTS = ["get-firmware.json", "get-db.json", "get-firmwares.json", "get-dbs.json", "sync.json"];
+
+// Mirrored and verified whenever keycard-tech/shell-units has published one, and nothing on the site reads
+// it yet: its absence is a normal build, and a broken release is reported rather than fatal. Once a page
+// reads get-units.json it joins PAGE_DOCUMENTS, which is what makes its kind fatal to the sync.
+export const PROVISIONAL_DOCUMENTS = [{ kind: "units", document: "get-units.json" }];
+
+// The key the SHVR allowlist signature is checked against. Pinned, and never taken from the origin the
+// file came from: shell-units' docs/format.md is explicit that a client doing that gains nothing.
+// The page that verifies a device imports the same file.
+export const UNITS_VERIFY_KEY = JSON.parse(readFileSync(new URL("../trust.json", import.meta.url))).unitsVerifyKey;
 
 // The documents an update page reads, and the release kind the artifacts they name come from.
 export const PAGE_DOCUMENTS = [

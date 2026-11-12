@@ -1,4 +1,5 @@
-# Copy to .github/workflows/ in keycard-tech/keycard-shell and keycard-tech/keycard-eth-db; setup in docs/keep-in-sync.md
+# Copy to .github/workflows/ in keycard-tech/keycard-shell, keycard-tech/keycard-eth-db and
+# keycard-tech/shell-units; setup in docs/keep-in-sync.md
 
 name: notify update site
 

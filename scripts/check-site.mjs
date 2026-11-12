@@ -2,8 +2,8 @@
 
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DB_MAGIC, databaseMagic, databaseVersion, firmwareVersion, sha256 } from "./binfmt.mjs";
-import { PAGES, URLS, PAGE_DOCUMENTS, artifactsOf, at, linkOf, prefix } from "./site.mjs";
+import { DB_MAGIC, databaseMagic, databaseVersion, firmwareVersion, readUnits, sha256 } from "./binfmt.mjs";
+import { ARTIFACTS, PAGES, URLS, PAGE_DOCUMENTS, PROVISIONAL_DOCUMENTS, UNITS_VERIFY_KEY, artifactsOf, at, linkOf, prefix } from "./site.mjs";
 import { listen } from "./serve-site.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -33,15 +33,24 @@ const refsIn = (html) =>
     .map(([, , quoted, bare]) => quoted ?? bare)
     .filter((ref) => ref !== undefined && !/^(https?:|mailto:|javascript:|#|data:)/.test(ref) && ref !== "");
 
-// Reported rather than thrown, so one bad artifact does not hide the state of the rest of the site.
+// Reported rather than thrown, so one bad artifact does not hide the state of the rest of the site. The
+// database has to carry the Shell magic; the allowlist has to survive every refusal rule of shell-units'
+// reader, the signature against the pinned key included. Nothing is inferred from the firmware's flags
+// byte: 0 is what the multicoin build carries and the meaning of the rest is not written down upstream.
 const versionInside = (kind, bytes) => {
   if (kind === "firmware") return firmwareVersion(bytes);
-  if (databaseMagic(bytes) !== DB_MAGIC) return "bad magic";
+  if (kind === "database") return databaseMagic(bytes) === DB_MAGIC ? databaseVersion(bytes) : "bad magic";
 
-  return databaseVersion(bytes);
+  try {
+    return readUnits(bytes, UNITS_VERIFY_KEY).version;
+  } catch (err) {
+    return `refused (${err.message})`;
+  }
 };
 
 const documents = new Map();
+const mediaPrefixes = new Set();
+const ARTIFACT_NAMES = new Set(Object.values(ARTIFACTS));
 
 for (const page of PAGES) {
   const link = linkOf(page);
@@ -57,10 +66,18 @@ for (const page of PAGES) {
 
   for (const entry of broken) fail(link, `${entry.status} ${entry.ref}`);
 
+  // An artifact's path is only ever correct as part of a document, because the sync is what gives it one.
+  // Compared by name rather than by prefix, since the bundler rewrites "./media/x" to "/media/x".
+  for (const ref of refs) {
+    if (ARTIFACT_NAMES.has(new URL(ref, landed.url).pathname.split("/").pop())) fail(link, `${ref} names an artifact directly, which only a document may do`);
+  }
+
   const value = html.match(/id=("|')[\w-]*media-prefix\1[^>]*?value=("|')(.*?)\2|id=[\w-]*media-prefix[^>]*?value=([^\s>]+)/);
   const mediaPrefix = value?.[3] ?? value?.[4];
 
   if (mediaPrefix !== undefined) {
+    mediaPrefixes.add(mediaPrefix);
+
     for (const { document } of PAGE_DOCUMENTS) {
       const fetched = await get(new URL(mediaPrefix + document, landed.url).href);
 
@@ -80,24 +97,40 @@ for (const [name, path] of Object.entries(URLS)) {
   else console.log(`url ${name} -> ${landed.url.slice(origin.length)}`);
 }
 
-// Every artifact a document names has to be served, carry the version the document claims, and hash to what it publishes.
+// Every artifact a document names has to be served, carry the version the document claims, and hash to
+// what it publishes. The paths are relative to the document, not to the page that fetched it.
+const checkChain = async (document, kind, url, body) => {
+  for (const { path, hash } of artifactsOf(body)) {
+    const artifact = await get(new URL(path, url).href);
+    const bytes = Buffer.from(await artifact.body());
+    const served = sha256(bytes);
+    const inside = versionInside(kind, bytes);
+
+    console.log(`${document} ${path}: ${body.version} ${served.slice(0, 16)}… ${bytes.length} bytes, in-bin ${inside}`);
+
+    if (artifact.status !== 200) fail(document, `${artifact.status} for ${path}`);
+    if (String(body.version) !== inside) fail(document, `version ${body.version} is not the version in ${path}`);
+    if (hash !== undefined && hash !== served) fail(document, `${path} is ${served}, the document says ${hash}`);
+  }
+};
+
 for (const { kind, document } of PAGE_DOCUMENTS) {
   const read = documents.get(document);
 
   if (read === undefined) fail(document, "never fetched by any page");
-  else {
-    for (const { path, hash } of artifactsOf(read)) {
-      const artifact = await get(new URL(path, read.at).href);
-      const bytes = Buffer.from(await artifact.body());
-      const served = sha256(bytes);
-      const inside = versionInside(kind, bytes);
+  else await checkChain(document, kind, read.at, read);
+}
 
-      console.log(`${document} ${path}: ${read.version} ${served.slice(0, 16)}… ${bytes.length} bytes, in-bin ${inside}`);
+// Nothing links a provisional document yet, so it is looked for at the media prefix it is served from:
+// not published is a normal answer, published has to hold up.
+for (const { kind, document } of PROVISIONAL_DOCUMENTS) {
+  for (const media of mediaPrefixes) {
+    const url = new URL(document, new URL(media, origin + BASE)).href;
+    const response = await get(url);
 
-      if (artifact.status !== 200) fail(document, `${artifact.status} for ${path}`);
-      if (String(read.version) !== inside) fail(document, `version ${read.version} is not the version in ${path}`);
-      if (hash !== undefined && hash !== served) fail(document, `${path} is ${served}, the document says ${hash}`);
-    }
+    if (response.status === 404) console.log(`${document}: not published`);
+    else if (response.status !== 200) fail(document, `${response.status} at ${url.slice(origin.length)}`);
+    else await checkChain(document, kind, url, JSON.parse(Buffer.from(await response.body()).toString()));
   }
 }
 

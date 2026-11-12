@@ -1,9 +1,10 @@
 // Copies the mirror into dist/, whole or not at all: a missing file there is a 404, and Pages answers 404s with HTML.
 
-import { cp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ARTIFACTS, DOCUMENTS, PAGE_DOCUMENTS, artifactsOf } from "./site.mjs";
+import { ARTIFACTS, DOCUMENTS, PAGE_DOCUMENTS, PROVISIONAL_DOCUMENTS, artifactsOf } from "./site.mjs";
+import { existsSync } from "node:fs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MIRROR = resolve(ROOT, process.argv[2] ?? "pages/media");
@@ -29,10 +30,12 @@ if ((await missing(["index.html"], DIST)).length > 0) {
   process.exit(1);
 }
 
-// Every artifact a document names has to be there, and inside media/: anywhere else is the same 404.
+// Every artifact a document names has to be there, and inside media/: anywhere else is the same 404. A
+// provisional document is held to the same rule when it exists, and to none when it does not.
+const published = [...PAGE_DOCUMENTS, ...PROVISIONAL_DOCUMENTS.filter(({ document }) => existsSync(join(MIRROR, document)))];
 const artifacts = [];
 
-for (const { document } of PAGE_DOCUMENTS) {
+for (const { document } of published) {
   for (const { path } of artifactsOf(JSON.parse(await readFile(join(MIRROR, document), "utf8")))) {
     if (!Object.values(ARTIFACTS).includes(path)) throw new Error(`${document} names ${path}, which is not a mirrored artifact`);
 
@@ -51,6 +54,9 @@ await writeFile(join(DIST, ".nojekyll"), "");
 
 const size = async (file) => (await stat(join(mirrored, file))).size;
 
-const sizes = await Promise.all(artifacts.map(async (path) => `${path} ${await size(path)}B`));
+const [sizes, documents] = await Promise.all([
+  Promise.all(artifacts.map(async (path) => `${path} ${await size(path)}B`)),
+  readdir(mirrored).then((files) => files.filter((name) => name.endsWith(".json")).length),
+]);
 
-console.log(`dist/media: ${sizes.join(" ")}, ${DOCUMENTS.length} documents, CNAME, .nojekyll`);
+console.log(`dist/media: ${sizes.join(" ")}, ${documents} documents, CNAME, .nojekyll`);

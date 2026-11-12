@@ -1,0 +1,76 @@
+{% extends './base.html' %}
+{% load static %}
+{% block title %}Home{% endblock title %}
+{% block content %}
+    <div class="keycard_shell__landing-img-container">
+        <img src="{% static 'keycard_shell/img/landing.png' %}" alt="Landing" class="keycard_shell__landing-img">
+    </div>
+    <div class="keycard_shell__page-heading-container">
+        <h1 class="keycard_shell__page-heading" id="release-notes-page-heading">Your Keycard Shell</h1>
+    </div> 
+    <div class="keycard_shell__page-top-container">
+        <div class="keycard_shell__page-top-text-container">
+            <span class="keycard_shell__page-top-text">Welcome to your Keycard Shell — the open, secure, and modular hardware wallet.</span>
+        </div>
+    </div>
+    <div class="keycard_shell__landing-links-container">
+        <div class="keycard_shell__landing-link-container">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Quick start guide</h3>
+                <p class="keycard_shell__bottom-menu-prompt-text">Get started with Shell in a few simple steps</p>
+            </div>
+            <div class="keycard_shell__help-links">
+               <span class="keycard_shell__help-links-list-el"><a href="https://keycard.tech/start/shell" target="_blank" class="keycard_shell__help-link">Start using Shell</a></span>
+            </div>
+        </div>
+        <div class="keycard_shell__landing-link-container">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Frequently asked questions</h3>
+                <p class="keycard_shell__bottom-menu-prompt-text">Find answers to common questions</p>
+            </div>
+            <div class="keycard_shell__help-links">
+               <span class="keycard_shell__help-links-list-el"><a href="https://keycard.tech/help/faq" target="_blank" class="keycard_shell__help-link">Learn more</a></span>
+            </div>
+        </div>
+        <div class="keycard_shell__landing-link-container">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Verify your device</h3>
+                <p class="keycard_shell__bottom-menu-prompt-text">Make sure your Shell is genuine</p>
+            </div>
+            <div class="keycard_shell__help-links">
+               <span class="keycard_shell__help-links-list-el"><a href="{% url 'device:verify-index' %}" target="_blank" class="keycard_shell__help-link">Verify</a></span>
+            </div>
+        </div>
+        <div class="keycard_shell__landing-link-container">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Update firmware and database</h3>
+                <p class="keycard_shell__bottom-menu-prompt-text">Install the latest firmware and token updates</p>
+            </div>
+            <div class="keycard_shell__help-links">
+               <span class="keycard_shell__help-links-list-el"><a href="{% url 'db:update-index' %}" target="_blank" class="keycard_shell__help-link">Update</a></span>
+            </div>
+        </div>
+        <div class="keycard_shell__landing-link-container">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Help with Shell and Keycard</h3>
+                <p class="keycard_shell__bottom-menu-prompt-text">Explore Keycard and Shell detailed guides</p>
+            </div>
+            <div class="keycard_shell__help-links">
+               <span class="keycard_shell__help-links-list-el"><a href="https://keycard.tech/help" target="_blank" class="keycard_shell__help-link">Learn more</a></span>
+            </div>
+        </div>
+        <div class="keycard_shell__landing-link-container">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Have questions?</h3>
+                <p class="keycard_shell__bottom-menu-prompt-text">Contact our team or join the community for support</p>
+            </div>
+            <div class="keycard_shell__help-links">
+                <ul class="keycard_shell__help-links-list">
+                    <li class="keycard_shell__help-links-list-el"><a href="mailto:support@keycard.tech" class="keycard_shell__help-link">Get in touch</a></li>
+                    <li class="keycard_shell__help-links-list-el"><a href="https://discord.com/invite/uJAXk7jFhZ" target="_blank"  class="keycard_shell__help-link"><img src="{% static 'keycard_shell/img/discord.svg' %}" class="keycard_shell__help-link-img" alt="Discord"></a></li>
+                    <li class="keycard_shell__help-links-list-el"><a href="https://x.com/Keycard_" target="_blank" class="keycard_shell__help-link"><img src="{% static 'keycard_shell/img/twitter.svg' %}" class="keycard_shell__help-link-img" alt="Discord"></a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endblock %}

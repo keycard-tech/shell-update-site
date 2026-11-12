@@ -1,0 +1,16 @@
+{% extends './base.html' %}
+{% load static %}
+{% block title %}Firmware Release Notes{% endblock title %}
+{% block content %}
+<input type="hidden" id="db_updater__media-prefix" name="db_updater__media-prefix" value="{% get_media_prefix %}">
+<div class="keycard_shell__page-heading-container">
+    <h1 class="keycard_shell__page-heading" id="release-notes-page-heading">Release notes</h1>
+</div> 
+<div class="keycard_shell__page-top-container">
+    <div class="keycard_shell__page-top-text-container">
+        <span class="keycard_shell__page-top-text">Shell firmwares are auditable and fully reproducible. Check <a href="https://github.com/keycard-tech/keycard-shell/" class="keycard_shell__page-top-help-link" target="_blank">Keycard Shell Github page</a> for more details.</span>
+    </div>
+</div>
+<div class="keycard_shell__relese-notes-container" id="release-notes-container"></div>
+<script type="module" src="{% static '/keycard_shell/js/release_notes.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{
+  "name": "shell-update-site",
+  "version": "1.0.0",
+  "description": "Keycard Shell update website",
+  "private": true,
+  "license": "MIT",
+  "source": [
+    "pages/index.html",
+    "pages/update.html",
+    "pages/air-gapped.html",
+    "pages/db-version-history.html",
+    "pages/release-notes.html"
+  ],
+  "scripts": {
+    "render": "node scripts/render-pages.mjs",
+    "sync": "node scripts/sync-upstream.mjs",
+    "prestart": "npm run render && npm run sync",
+    "start": "parcel pages/index.html",
+    "prebuild": "rm -rf dist && npm run render && npm run sync",
+    "build": "parcel build --no-source-maps --public-url ./",
+    "postbuild": "rm -rf dist/media && cp -r pages/media dist/media && touch dist/.nojekyll",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@choppu/shelljs": "^2.0.0",
+    "@choppu/shelljs-web-hid": "^2.0.0",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
+    "html5-qrcode": "^2.3.8",
+    "marked": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "parcel": "^2.16.4",
+    "typescript": "^6.0.3"
+  }
+}

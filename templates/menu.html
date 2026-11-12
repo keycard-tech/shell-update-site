@@ -1,0 +1,27 @@
+{% load static %}
+<header class="keycard_shell__menu-container " id="keycard_shell__menu-container ">
+    <div class="keycard_shell__logo-container">
+       <a href="https://keycard.tech"><img class="keycard_shell__logo" src="{% static 'keycard_shell/img/logo.svg' %}" alt="Logo"> </a>
+    </div>
+    <div class="keycard_shell__menu" id="keycard_shell__menu">
+        <div class="keycard_shell__mobile-menu-container" id="mobile-menu-link-container">
+            <a href="#" class="keycard_shell__mobile-menu" id="mobile-menu-link">
+                <img src="{% static 'keycard_shell/img/menu.svg' %}" alt="Mobile menu" id="mobile-menu-img" class="keycard_shell__mobile-menu-img">
+                <img src="{% static 'keycard_shell/img/close.svg' %}" alt="Mobile menu" id="close-menu-img" class="keycard_shell__mobile-menu-img keycard_shell__display-none">
+            </a>
+        </div>
+        <div class="keycard_shell__menu-element keycard_shell__mobile-menu-element" id="menu-element-keycard">
+            <a href="https://keycard.tech/keycard" class="keycard_shell__menu-element-link" id="menu-keycard">Keycard</a>
+        </div>
+        <div class="keycard_shell__menu-element keycard_shell__mobile-menu-element keycard_shell__menu-dropdown" id="menu-element-keycard-shell">
+            <a href="https://keycard.tech/keycard-shell" class="keycard_shell__menu-element-link" id="menu-keycard-shell">Keycard Shell</a>
+            <ul class="keycard-shell__menu-dropdown-elements">
+                <li class="keycard-shell__menu-dropdown-element"><a href="{% url 'db:update-index' %}" class="keycard_shell__menu-element-link" id="menu-keycard-shell-update">Update</a></li>
+                <li class="keycard-shell__menu-dropdown-element"><a href="{% url 'device:verify-index' %}" class="keycard_shell__menu-element-link" id="menu-keycard-shell-verify">Verify device</a></li>
+            </ul>
+        </div>
+        <div class="keycard_shell__menu-element" id="menu-element-keycard-buy-container">
+            <a href="https://get.keycard.tech" class="keycard_shell__menu-element-link keycard_shell__menu-btn" id="menu-keycard-buy-btn">Buy Keycard</a>
+        </div>
+    </div>
+</header>

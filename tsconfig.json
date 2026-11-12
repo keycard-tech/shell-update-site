@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "strict": true,
+    "noImplicitAny": true,
+    "noEmit": true,
+    "rootDir": "./src/js",
+    "sourceMap": true
+  },
+  "include": ["./src/js/**/*.ts"],
+  "exclude": ["node_modules", "dist", "pages", "media", ".parcel-cache"]
+}

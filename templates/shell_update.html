@@ -1,0 +1,139 @@
+{% extends './base.html' %}
+{% load static %}
+{% block title %}Update{% endblock title %}
+{% block content %}
+<input type="hidden" id="db_updater__media-prefix" name="db_updater__media-prefix" value="{% get_media_prefix %}">
+<div class="keycard_shell__page-heading-container">
+    <h1 class="keycard_shell__page-heading" id="db-page-heading">Update firmware and database</h1>
+</div> 
+<div class="keycard_shell__page-top-container keycard_shell__hide" id="page-top-text">
+    <div class="keycard_shell__page-top-text-container">
+        <span class="keycard_shell__page-top-text" id="page-prompt"></span>
+    </div>
+</div>
+<div class="keycard_shell__update-steps-container">
+    <div class="keycard_shell__start-update-container" id="start-update-screen">
+        <div class="keycard_shell__start-screen-container">
+            <div class="keycard_shell__start-update-img-container" id="update-start-image">
+                <img src="{% static 'keycard_shell/img/usb_update_transparent.png' %}" alt="Shell Update" class="keycard_shell__start-update-img">
+            </div>
+            <div class="keycard_shell__start-update-text-container">
+                <h2 class="keycard_shell__page-heading keycard_shell__update-heading" id="start-screen-heading">Connect your Keycard Shell</h2>
+                <div class="keycard_shell__update-prompt-container">
+                    <span class="keycard_shell__update-prompt" id="start-screen-prompt">Unlock device before connecting via USB-C cable</span>  
+                </div>
+                <div class="keycard_shell__update_desktop_only_container">
+                    <span class="keycard_shell__update_desktop_only-text-container"> 
+                        <img src="{% static 'keycard_shell/img/desktop.svg' %}" alt="Desktop only" class="keycard_shell__update_desktop_only-img">
+                        <span class="keycard_shell__update_desktop_only-text">Only for Desktop</span>
+                    </span>
+                    <a href="{% url 'db:air-gapped-update' %}" class="keycard_shell_air-gapped-link-mobile">
+                        <img  class="keycard_shell_air-gapped-link-img" src="{% static 'keycard_shell/img/air-gapped.svg' %}" alt="Device">
+                        <span class="keycard_shell_air-gapped-link-text">Update in air-gapped mode</span>
+                    </a>
+                </div>
+                <div class="keycard_shell__btn-container" id="keycard_shell__update-start-button">
+                    <input id="start-screen-btn" class="keycard_shell__btn keycard_shell__update-btn-inline" type="button" value="Update">
+                    <span class="keycard_shell_or">or</span>
+                    <a href="{% url 'db:air-gapped-update' %}" class="keycard_shell_air-gapped-link">
+                        <img  class="keycard_shell_air-gapped-link-img" src="{% static 'keycard_shell/img/air-gapped.svg' %}" alt="Device">
+                        <span class="keycard_shell_air-gapped-link-text">Update in air-gapped mode</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="keycard_shell__start-update-container keycard_shell__display-none" id="connect-device-screen">
+        <div class="keycard_shell__device-plug-animation-container">
+            <div class="keycard_shell__plug-animation-container">
+                <img src="{% static 'keycard_shell/img/plug_animation.webp' %}" alt="Cable" class="keycard_shell__plug-animation">
+            </div>
+        </div>
+        <div class="keycard_shell__connect-usb-text-container">
+            <h2 class="keycard_shell__page-heading keycard_shell__connect-heading">Unlock and connect your device</h2>
+            <span class="keycard_shell__update-prompt">Connect your Keycard Shell via USB-c cable directly, do not use USB-hubs and adapters, approve connection request in browser.</span>
+        </div>
+    </div>
+    <div class="keycard_shell__start-update-container keycard_shell__display-none" id="select-update-screen">
+        <div class="keycard_shell__select-update-container">
+            <div class="keycard_shell__select-update-type-text-container">
+                <span class="keycard_shell__select-update-type-text keycard_shell__update-prompt" id="select-update-text">Update available — selective update supported</span>
+            </div>
+            <div class="keycard_shell__checkbox-fields-contaner"> 
+                <div class="keycard_shell__checkbox-field-top-label-container">
+                    <span class="keycard_shell__checkbox-field-top-label">Firmware version</span>
+                </div>
+                <div class="keycard_shell__checkbox-field-container" id="firmware-update-container">
+                    <input type="checkbox" id="firmware-update" name="firmware-update" class="keycard_shell__checkbox-field" checked>
+                    <label for="firmware-update" id="firmware-update-label" class="keycard_shell__checkbox-field-label"></label>
+                    <span id="fw-update-status" class="keycard_shell__update-status keycard_shell__update-prompt">New version</span>
+                </div>
+                <div class="keycard_shell__release-notes-container">
+                    <a href="{% url 'firmware:release-notes' %}" target="_blank" class="keycard_shell__release-notes">Release notes</a>
+                </div>
+                <div class="keycard_shell__checkbox-field-top-label-container">
+                    <span class="keycard_shell__checkbox-field-top-label">Database version</span>
+                </div>
+                <div class="keycard_shell__checkbox-field-container" id="db-update-container">
+                    <input type="checkbox" id="db-update" name="db-update" class="keycard_shell__checkbox-field" checked>
+                    <label for="db-update" id="db-update-label" class="keycard_shell__checkbox-field-label"></label>
+                    <span id="db-update-status" class="keycard_shell__update-status keycard_shell__update-prompt">New version</span>
+                </div>
+                <div class="keycard_shell__release-notes-container">
+                    <a href="{% url 'db:db-version-history' %}" target="_blank" class="keycard_shell__release-notes">Version history</a>
+                </div>
+            </div>
+            <div class="keycard_shell__btn-container keycard_shell__update_btn">
+                <input id="transfer-data-btn" class="keycard_shell__btn" type="button" value="Transfer to Device" disabled>
+            </div>
+        </div>
+    </div>
+    <div class="keycard_shell__start-update-container keycard_shell__display-none" id="update-in-progress-screen">
+        <div class="keycard_shell__update_progress_container">
+            <div class="keycard_shell__update-progress-prompt-container">
+                <span class="keycard_shell__update-progress-prompt">Please do not disconnect device.</span>
+                <div class="keycard_shell__update-step-progress-container">
+                    <span class="keycard_shell__update-step-prompt" id="update-progress-step-prompt">Transferring latest database</span>
+                    <span class="keycard_shell__update-step-prompt keycard_shell__update-step-percent" id="update-progress-percent"></span>
+                </div>
+                <div id="update-progress" class="keycard_shell__load-progress-bar-container">
+                    <progress id="update-progress-bar" value="0" class="keycard_shell__load-progress-bar"></progress>
+                </div>
+                <div class="keycard_shell__finish-update-instructions keycard_shell__display-none" id="finish-update-instructions">
+                    <span class="keycard_shell__finish-update-message">Check Keycard Shell screen for instructions</span>
+                </div>
+                <div class="keycard_shell__btn-container keycard_shell__next-btn-container keycard_shell__display-none" id="keycard_shell__update-next-btn-container">
+                    <input id="update-next-btn" class="keycard_shell__btn keycard_shell__update-btn-inline" type="button" value="Transfer firmware">
+                </div>
+            </div>
+            <div class="keycard_shell__paginator-container">
+                <span class="keycard_shell__paginator" id="update-paginator"></span>
+            </div>
+        </div>
+    </div>
+    <div class="keycard_shell__start-update-container keycard_shell__display-none" id="update-success-screen">
+        <div class="keycard_shell__update-finished-screen-container">
+            <div class="keycard_shell__update-success-img-container">
+                <img src="{% static 'keycard_shell/img/update_completed.png' %}" alt="DB Update Success" class="keycard_shell__update-success-img">
+            </div>
+            <div class="keycard_shell__update-finished-prompt-container keycard_shell__success-container">
+                <span class="keycard_shell__page-heading" id="update-finished-success-message">Update complete</span>
+                <span class="keycard_shell__page-text">Now you are running latest version of Shell software.</span>
+            </div>
+        </div>
+    </div>
+    <div class="keycard_shell__start-update-container keycard_shell__display-none" id="update-failed-screen">
+        <div class="keycard_shell__update-finished-screen-container">
+            <div class="keycard_shell__update-finished-img-container">
+                <img src="{% static 'keycard_shell/img/fail.svg' %}" alt="DB Update Fail" class="keycard_shell__update-finished-img">
+            </div>
+            <div class="keycard_shell__update-finished-prompt-container">
+                <span class="keycard_shell__update-finished-prompt" id="update-finished-err-message"></span>
+                <a href="{% url 'db:update-index' %}" class="keycard_shell__update-finished-back-btn">Try again</a>
+            </div>
+        </div>
+    </div>
+    <span id="changelog" class="keycard_shell__hide"></span>
+</div>
+<script type="module" src="{% static '/keycard_shell/js/update.js' %}"></script>
+{% endblock %}

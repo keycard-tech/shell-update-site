@@ -1,0 +1,70 @@
+{% load static %}
+<div class="keycard_shell__bottom">
+    <div class="keycard_shell__bottom-heading-container keycard_shell__display-none" id="bottom-heading">
+        <div class="keycard_shell__bottom-heading">
+            <h2 class="keycard_shell__h2" id="verify-result-header">What's next?</h2>
+        </div>
+        <div class="keycard_shell__bottom-prompt-container">
+            <span class="keycard_shell__bottom-prompt">Keep your Shell secure and up-to-date and join our community</span>
+        </div>
+    </div>
+    <div class="keycard_shell__bottom-content-container" id="bottom-content-container">
+        <div class="keycard_shell__bottom-menu-part" id="contact">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Have questions?</h3>
+            </div>
+            <div class="keycard_shell__bottom-menu-prompt">
+                <p class="keycard_shell__bottom-menu-prompt-text">Reach out to our team or engage with our community on Discord or X. <span class="keycard_shell__align-text"></span></p>
+            </div>
+            <div class="keycard_shell__help-links">
+                <ul class="keycard_shell__help-links-list">
+                    <li class="keycard_shell__help-links-list-el"><a href="mailto:support@keycard.tech" class="keycard_shell__help-link">Get in touch</a></li>
+                    <li class="keycard_shell__help-links-list-el"><a href="https://discord.com/invite/uJAXk7jFhZ" class="keycard_shell__help-link"><img src="{% static 'keycard_shell/img/discord.svg' %}" class="keycard_shell__help-link-img" alt="Discord"></a></li>
+                    <li class="keycard_shell__help-links-list-el"><a href="https://x.com/Keycard_" class="keycard_shell__help-link"><img src="{% static 'keycard_shell/img/twitter.svg' %}" class="keycard_shell__help-link-img" alt="Discord"></a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="keycard_shell__bottom-menu-part keycard_shell__steps keycard_shell__display-none" id="verify">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Verify authenticity of Shell</h3>
+            </div>
+            <div class="keycard_shell__bottom-menu-prompt">
+                <p class="keycard_shell__bottom-menu-prompt-text">Ensure your Shell is authentic and check its verification history.</p>
+            </div>
+            <div class="keycard_shell__update-links">
+                <div class="keycard_shell__update-links-list">
+                    <span class="keycard_shell__update-links-el">
+                        <a href="{% url 'device:verify-index' %}" id="verify-device-link" class="keycard_shell__update-link">
+                            <img src="{% static 'keycard_shell/img/verified.svg' %}" alt="Verify">
+                            <span>Verify authenticity</span>
+                        </a>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="keycard_shell__bottom-menu-part keycard_shell__steps keycard_shell__display-none" id="update">
+            <div class="keycard_shell__bottom-menu-header">
+                <h3 class="keycard_shell__h3">Upgrade Shell</h3>
+            </div>
+            <div class="keycard_shell__bottom-menu-prompt">
+                <p class="keycard_shell__bottom-menu-prompt-text">Get the latest features and security improvements by installing the newest firmware and db. </span></p>
+            </div>
+            <div class="keycard_shell__update-links">
+                <div class="keycard_shell__update-links-list">
+                    <span class="keycard_shell__update-links-el">
+                        <a href="{% url 'db:update-index' %}" id="update-db-usb-link" class="keycard_shell__update-link">
+                            <img src="{% static 'keycard_shell/img/firmware.svg' %}" alt="FW">
+                            <span>Update Shell</span>
+                        </a>
+                    </span>
+                    <span class="keycard_shell__update-links-el-no-bg">
+                        <a href="{% url 'firmware:release-notes' %}" id="update-db-qr-link" class="keycard_external-link">
+                            <span>Release notes</span>
+                            <img src="{% static 'keycard_shell/img/external.svg' %}" class="keycard_shell__help-link-img" alt="External">
+                        </a>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

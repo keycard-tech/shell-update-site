@@ -1,0 +1,32 @@
+# Copy to .github/workflows/ in keycard-tech/keycard-shell and keycard-tech/keycard-eth-db.
+# Fires shell-update-site's "sync and deploy" workflow the moment a release is published there,
+# so nobody has to remember to update the website. Setup: docs/keep-in-sync.md
+
+name: notify update site
+
+on:
+  release:
+    types: [published, edited, deleted]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch upstream-release
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_SITE_SYNC_TOKEN }}
+        run: |
+          gh api repos/keycard-tech/shell-update-site/dispatches \
+            --input - <<JSON
+          {
+            "event_type": "upstream-release",
+            "client_payload": {
+              "repository": "${{ github.repository }}",
+              "release": "${{ github.event.release.html_url }}",
+              "tag": "${{ github.event.release.tag_name }}"
+            }
+          }
+          JSON

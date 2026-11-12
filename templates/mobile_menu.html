@@ -1,0 +1,77 @@
+{% load static %}
+<div class="keycard_shell__mobile-menu-opened keycard_shell__mobile-menu-hidden" id="mobile-menu-container">
+    <div class="keycard_shell__mobile-menu-rel-container">
+        <div class="keycard_shell__mobile-menu-opened-top">
+            <a href="https://keycard.tech/keycard" class="keycard_shell__mobile-menu-element-link"id="mobile-menu-element-keycard">Keycard</a>
+            <a href="https://keycard.tech/keycard-shell" class="keycard_shell__mobile-menu-element-link" id="mobile-menu-keycard-shell">Keycard Shell</a>
+            <ul class="keycard-shell__mobile_submenu-elements">
+                <li class="keycard-shell__mobile_submenu-element"><a href="{% url 'db:update-index' %}" class="keycard-shell__mobile_submenu-element-link" id="mobile-menu-keycard-shell-update">Update</a></li>
+                <li class="keycard-shell__mobile_submenu-element"><a href="{% url 'device:verify-index' %}" class="keycard-shell__mobile_submenu-element-link" id="mobile-menu-keycard-shell-verify">Verify device</a></li>
+            </ul>
+            <div class="keycard_shell__menu-btn-container">
+                <a href="https://get.keycard.tech" class="keycard_shell__menu-element-link keycard_shell__menu-btn keycard_shell__mobile-menu-buy-btn" id="mobile-menu-keycard-buy-btn">Buy Keycard</a>
+            </div>
+        </div>
+        <div class="keycard_shell__mobile-menu-opened-bottom">
+            <div class="keycard_shell__mobile_menu_footer">
+                <h2 class="keycard_shell__footer-header">Info</h2>
+                <ul class="keycard_shell__footer-menu-list">
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://keycard.tech/start" class="keycard_shell__footer-menu-link">Get started</a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://keycard.tech/blog" class="keycard_shell__footer-menu-link">Blog</a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://keycard.tech/help" class="keycard_shell__footer-menu-link">Help</a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://keycard.tech/docs/overview" class="keycard_shell__footer-menu-link">Developers</a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://affiliates.keycard.tech/" target="_blank"  class="keycard_shell__footer-menu-link">
+                            <span>Affiliates</span>
+                            <img src="{% static 'keycard_shell/img/external.svg' %}" class="keycard_shell__footer-menu-link-ext-ic" alt="External Link">
+                        </a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element"><a href="https://keycard.tech/resellers" class="keycard_shell__footer-menu-link">Resellers</a></li>
+                </ul>
+            </div>
+            <div class="keycard_shell__mobile_menu_footer">
+                <h2 class="keycard_shell__footer-header">Contacts</h2>
+                <ul class="keycard_shell__footer-menu-list">
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://keycard.tech/about" class="keycard_shell__footer-menu-link">About</a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://keycard.tech/contact" class="keycard_shell__footer-menu-link">Contact</a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://discord.com/invite/uJAXk7jFhZ" class="keycard_shell__footer-menu-link">
+                            <span>Discord</span>
+                            <img src="{% static 'keycard_shell/img/external.svg' %}" class="keycard_shell__footer-menu-link-ext-ic" alt="External Link">
+                        </a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://x.com/Keycard_" class="keycard_shell__footer-menu-link">
+                            <span>X</span>
+                            <img src="{% static 'keycard_shell/img/external.svg' %}" class="keycard_shell__footer-menu-link-ext-ic" alt="External Link">
+                        </a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://www.youtube.com/@Keycard_tech/" class="keycard_shell__footer-menu-link">
+                            <span>YouTube</span>
+                            <img src="{% static 'keycard_shell/img/external.svg' %}" class="keycard_shell__footer-menu-link-ext-ic" alt="External Link">
+                        </a>
+                    </li>
+                    <li class="keycard_shell__footer-menu-list-element">
+                        <a href="https://www.reddit.com/r/keycard_tech/" class="keycard_shell__footer-menu-link">
+                            <span>Reddit</span>
+                            <img src="{% static 'keycard_shell/img/external.svg' %}" class="keycard_shell__footer-menu-link-ext-ic" alt="External Link">
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

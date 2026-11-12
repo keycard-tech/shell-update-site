@@ -1,0 +1,131 @@
+{% extends './base.html' %}
+{% load static %}
+{% block title %}Air-gapped Update{% endblock title %}
+{% block content %}
+<input type="hidden" id="update__media-prefix" name="update__media-prefix" value="{% get_media_prefix %}">
+<div class="keycard_shell__page-heading-container">
+    <h1 class="keycard_shell__page-heading" id="release-notes-page-heading">Update firmware and database in air gapped mode</h1>
+</div> 
+<div class="keycard_shell__page-top-container">
+    <div class="keycard_shell__page-top-text-container">
+        <span class="keycard_shell__page-top-text">Air-gapped updates offer maximum security and control, keeping your Shell up to date without ever touching an internet-connected machine.<br>
+            <br/>
+            This page helps you locate and download the latest firmware and database for an offline upgrade of your Keycard Shell.
+             Please read the <a href="https://keycard.tech/en/help/update-keycard-shell-in-air-gapped-mode" class="keycard_shell__page-top-help-link" target="_blank">Updating Keycard Shell in air gapped mode</a> article as a reference for the process.</span>
+    </div>
+</div>
+<div class="keycard_shell__ag_update_steps">
+    <div class="keycard_shell__ag_update_step">
+        <div class="keycard_shell__ag_update_step-head-container">
+            <h3 class="keycard_shell__ag_update_step-heading">1.&nbsp; Download stand-alone Shell updater app</h3>
+            <span class="keycard_shell__ag_update_step-description">The standalone updater app allows you to update your Shell without using internet or a web-browser. You can find it on its <a href="https://github.com/keycard-tech/kshell-updater/releases/" class="keycard_shell__page-top-help-link" target="_blank">GitHub repository</a>, or find the latest version below.</span>
+        </div>
+        <div class="keycard_shell__select-app">
+            <label for="op-system-selector" class="keycard_shell__checkbox-field-top-label">Select OS</label>
+            <div class="keycard_shell__select-field-container">
+                <select name="op-system" id="op-system-selector" class="keycard_shell__select-field">
+                    <option class="keycard_shell__select_option"  value="windows">Windows</option>
+                    <option class="keycard_shell__select_option" value="mac">macOS</option>
+                    <option class="keycard_shell__select_option" value="linux">Linux</option>
+                </select>
+            </div>
+        </div>
+        <div class="keycard_shell__btn-container keycard_shell__btn-ag-container">
+            <a href="" class="keycard_shell__btn keycard_shell__btn-ag" id="download-app-btn" >
+                <img src="{% static 'keycard_shell/img/download.svg' %}" alt="Download" width="20px" height="20px">
+                <span>Download Shell Updater</span>
+            </a>
+        </div>
+        <div class="keycard_shell__btn-container keycard_shell__ag_changelog-container">
+            <a href="https://github.com/keycard-tech/kshell-updater/releases" class="keycard_shell__btn keycard_shell__ag_changelog" id="app-changelog" >
+                <img src="{% static 'keycard_shell/img/changelog.svg' %}" alt="Changelog" width="20px" height="20px">
+                <span>View changelog</span>
+            </a>
+        </div>
+        <div class="keycard_shell__ag_hash_check_container">
+            <span class="keycard_shell__ag_hash_check_text">
+                Check the updater's SHA256 checksum <a href="https://github.com/keycard-tech/kshell-updater/releases/latest" class="keycard_shell__page-top-help-link" target="_blank">here</a>. You can for instance use shasum -a 256 to validate the file you downloaded. <br>
+                Copy the updater app to a freshly formatted USB stick. To avoid hidden malware, always format the USB drive before transferring files.
+            </span>
+        </div>
+    </div>
+    <div class="keycard_shell__ag_update_step">
+        <div class="keycard_shell__ag_update_step-head-container">
+            <h3 class="keycard_shell__ag_update_step-heading">2.&nbsp; Download firmware package</h3>
+            <span class="keycard_shell__ag_update_step-description">You can find Keycard Shell firmware releases on their <a href="https://github.com/keycard-tech/keycard-shell/releases" class="keycard_shell__page-top-help-link" target="_blank">GitHub repository</a>, or find the latest version below.</span>
+        </div>
+        <div class="keycard_shell__btn-container keycard_shell__btn-ag-container">
+            <a href="" class="keycard_shell__btn keycard_shell__btn-ag" id="download-fw" >
+                <img src="{% static 'keycard_shell/img/download.svg' %}" alt="Download" width="20px" height="20px">
+                <span id="download-fw-label"></span>
+            </a>
+        </div>
+        <div class="keycard_shell__btn-container keycard_shell__ag_changelog-container">
+            <a href="{% url 'firmware:release-notes' %}#"  target="_blank" class="keycard_shell__btn keycard_shell__ag_changelog" id="fw-changelog" >
+                <img src="{% static 'keycard_shell/img/changelog.svg' %}" alt="Changelog" width="20px" height="20px">
+                <span>View changelog</span>
+            </a>
+        </div>
+        <div class="keycard_shell__ag_hash_check_container">
+            <span class="keycard_shell__ag_hash_check_text"> Check the integrity using SHA256 checksum.</span>
+            <div class="keycard_shell__ag_hash_container">
+                <span class="keycard_shell__ag_hash_check_text keycard_shell__ag_hash-label">•&nbsp; SHA256:</span>
+                <span class="keycard_shell__ag_hash" id="fw-hash"></span>
+            </div>
+            <span class="keycard_shell__ag_hash_check_text">
+                Copy to the same USB drive.
+            </span>
+        </div>
+    </div>
+    <div class="keycard_shell__ag_update_step">
+        <div class="keycard_shell__ag_update_step-head-container">
+            <h3 class="keycard_shell__ag_update_step-heading">3.&nbsp; Download database package</h3>
+            <span class="keycard_shell__ag_update_step-description">Keycard Shell uses a database to store reference information like smartcontracts ABIs, ERC-20s, and chain IDs. The process to generate this database is fully documented and reproducible. Both the process and version history are documented on the <a href="https://shell.keycard.tech/update/db-version-history" class="keycard_shell__page-top-help-link" target="_blank">database version history</a> page for full information. You can choose a version from this <a href="https://shell.keycard.tech/update/db-version-history" class="keycard_shell__page-top-help-link" target="_blank">database version history</a>, or simply pick the latest version below.</span>
+        </div>
+        <div class="keycard_shell__btn-container keycard_shell__btn-ag-container">
+            <a href="" class="keycard_shell__btn keycard_shell__btn-ag" id="download-db" >
+                <img src="{% static 'keycard_shell/img/download.svg' %}" alt="Download" width="20px" height="20px">
+                <span id="download-db-label"></span>
+            </a>
+        </div>
+        <div class="keycard_shell__btn-container keycard_shell__ag_changelog-container">
+            <a href="{% url 'db:db-version-history' %}#" target="_blank" class="keycard_shell__btn keycard_shell__ag_changelog" id="db-changelog" >
+                <img src="{% static 'keycard_shell/img/changelog.svg' %}" alt="Changelog" width="20px" height="20px">
+                <span>View changelog</span>
+            </a>
+        </div>
+        <div class="keycard_shell__ag_hash_check_container">
+            <span class="keycard_shell__ag_hash_check_text"> Check the integrity using SHA256 checksum.</span>
+            <div class="keycard_shell__ag_hash_container">
+                <span class="keycard_shell__ag_hash_check_text keycard_shell__ag_hash-label">•&nbsp; SHA256:</span>
+                <span class="keycard_shell__ag_hash" id="db-hash"></span>
+            </div>
+            <span class="keycard_shell__ag_hash_check_text">
+                Copy the database file to the same USB drive.
+            </span>
+        </div>
+    </div>
+    <div class="keycard_shell__ag_update_step">
+        <div class="keycard_shell__ag_update_step-head-container">
+            <h3 class="keycard_shell__ag_update_step-heading">4.&nbsp; Prepare offline device</h3>
+            <span class="keycard_shell__ag_update_step-description">Install a clean OS on an empty hard drive or external boot disk. This could be:</span>
+            <ul class="keycard_shell__ag-list"> 
+                <li class="keycard_shell__ag_update_step-description keycard_shell__ag-list-element">Your current machine (dual-boot or temp clean install)</li>
+                <li class="keycard_shell__ag_update_step-description keycard_shell__ag-list-element">A secondary dedicated device</li>
+            </ul>
+            <span class="keycard_shell__ag_update_step-description">Ensure it’s fully offline. Disconnect all other drives and physically disable Wi-Fi/Bluetooth if possible.</span>
+        </div>
+    </div>
+    <div class="keycard_shell__ag_update_step">
+        <div class="keycard_shell__ag_update_step-head-container">
+            <h3 class="keycard_shell__ag_update_step-heading">5.&nbsp; Run standalone updater and follow instructions</h3>
+            <span class="keycard_shell__ag_update_step-description">
+                Boot your offline machine, plug in the USB, and launch the updater. <br>
+                Follow on-screen steps to update firmware and database. <br>
+                Shell now runs the latest software without ever touching an internet-connected OS.
+            </span>
+        </div>
+    </div>
+</div>
+<script type="module" src="{% static '/keycard_shell/js/air_gapped.js' %}"></script>
+{% endblock %}

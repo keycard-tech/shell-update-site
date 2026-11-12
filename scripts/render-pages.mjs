@@ -1,11 +1,4 @@
-// Renders templates/*.html (copied verbatim from keycard-shell-webapp) into static pages,
-// implementing the handful of Django template tags those templates use. Nothing else parses them.
-//
-// URLS, STATIC_ROOTS and MEDIA below stand in for keycard_shell/urls.py, Django's static files app
-// and MEDIA_ROOT: they are the only place a page path, an asset path or the unported verify URL is
-// written. Pages, media and the built assets are siblings, so every URL here is relative and the same
-// dist/ serves from a project page or a domain root. Parcel resolves relative URLs from the shared
-// root of its entries rather than from each entry, which is what makes the flat layout a requirement.
+// Renders the upstream Django templates into flat sibling pages/, implementing only the tags they use.
 
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -15,11 +8,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TEMPLATES = join(ROOT, "templates");
 const OUTPUT = join(ROOT, "pages");
 
-// {% static %} prefix -> build-time source directory, which Parcel replaces with hashed output paths.
 const STATIC_ROOTS = { "keycard_shell/": "src/", "admin/img/": "src/img/" };
 const MEDIA = "media/";
 
-// Django url name -> page. "device:verify-index" is not ported, so it keeps pointing at the live site.
 const URLS = {
   "landing": "index.html",
   "db:update-index": "update.html",
@@ -29,7 +20,6 @@ const URLS = {
   "device:verify-index": "https://shell.keycard.tech/verify/",
 };
 
-// Template -> file under pages/, which Parcel builds into every entry of one site.
 const PAGES = [
   { template: "landing.html", url: "index.html" },
   { template: "shell_update.html", url: "update.html" },
@@ -47,7 +37,6 @@ function staticPath(name) {
 
   if (prefix === undefined) throw new Error(`${name} is not in STATIC_ROOTS`);
 
-  // ../ because the rendered page sits in pages/, one level below src/.
   return `../${STATIC_ROOTS[prefix]}${clean.slice(prefix.length).replace(/\.js$/, ".ts")}`;
 }
 
@@ -77,7 +66,6 @@ async function renderPage(page) {
   const defined = new Map([...source.matchAll(BLOCK)].map(([, name, body]) => [name, body]));
   const base = await readFile(join(TEMPLATES, "base.html"), "utf8");
 
-  // Django keeps the block of the child template, and of the base where the child defines none.
   const merged = base.replace(BLOCK, (_, name, body) => defined.get(name) ?? body);
 
   return { html: resolveTags(await expandIncludes(merged)), title: (defined.get("title") ?? "").trim() };

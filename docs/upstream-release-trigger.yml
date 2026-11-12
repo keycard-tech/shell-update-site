@@ -1,6 +1,4 @@
-# Copy to .github/workflows/ in keycard-tech/keycard-shell and keycard-tech/keycard-eth-db.
-# Fires shell-update-site's "sync and deploy" workflow the moment a release is published there,
-# so nobody has to remember to update the website. Setup: docs/keep-in-sync.md
+# Copy to .github/workflows/ in keycard-tech/keycard-shell and keycard-tech/keycard-eth-db; setup in docs/keep-in-sync.md
 
 name: notify update site
 

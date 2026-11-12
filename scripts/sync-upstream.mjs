@@ -1,17 +1,4 @@
-// Mirrors the latest Keycard firmware and database releases into the site as same-origin files.
-//
-// GitHub serves release assets without Access-Control-Allow-Origin, so a page on GitHub Pages cannot
-// fetch() the bytes it is about to flash onto a device. This script downloads them at build time and
-// writes the four JSON documents keycard-shell-webapp's Django views served, in the same shapes and
-// under the same names, so the page scripts are unchanged apart from the prefix they fetch behind.
-//
-// media/ holds one current firmware.bin and db.bin, overwritten in place by each release, plus the
-// changelog per firmware release, which is the only history a page needs. Everything older stays on
-// the release it belongs to and is linked from there.
-//
-// Each artifact is checked against the checksum its release publishes and against the version written
-// inside the binary, and the JSON is written last: an interrupted or wrong sync can never point a page
-// at a missing or mismatched file.
+// GitHub serves release assets without CORS headers, so the bytes a page flashes are mirrored at build time.
 
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -20,21 +7,18 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// Properties of the Shell's flash and of the image the bootloader verifies, from
-// keycard-shell/tools/common.py and stm32/Core/Inc/stm32.h.
+// Shell flash geometry, from keycard-shell/tools/common.py and stm32/Core/Inc/stm32.h.
 const PAGE_SIZE = 8192;
 const FW_PAGE_COUNT = 76;
 const FW_IV_SIZE = 588;
 const SIG_SIZE = 64;
-// The linker script lays the header out as the signature over the image, then the four version bytes:
-// major, minor, patch, and beta/variant flags.
+// The header is the signature over the image, then four version bytes: major, minor, patch, flags.
 const FW_VERSION_OFFSET = FW_IV_SIZE + SIG_SIZE;
 // keycard-eth-db/tools/shell-db.py opens the database with struct.pack("<HHI", 0x4532, 4, version).
 const DB_MAGIC = 0x4532;
 const DB_FORMAT = 4;
 
-// Release assets are named by hand, so each is matched rather than trusted. The firmware pattern
-// excludes the bootloader, dev and experimental btc-only images sharing a release.
+// Hand-named assets, matched not trusted; the firmware pattern skips bootloader, dev and btc-only images.
 const RELEASES = {
   firmware: {
     repo: "keycard-tech/keycard-shell",
@@ -56,8 +40,7 @@ const RELEASES = {
   },
 };
 
-// The version history page links the reproduction zip of every release, which the browser downloads
-// rather than flashes, so it needs no same-origin copy.
+// Downloaded by the browser, never flashed, so it is linked straight from the release.
 const DATABASE_ZIP = /^db-(\d{8})-reproduction\.zip$/;
 
 const args = process.argv.slice(2);
@@ -87,8 +70,7 @@ const bytes = async (url) => request(url, "application/octet-stream").then((r) =
 
 const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 
-// Not the sha256sum of the file: keycard-shell/tools/firmware-hash.py pads the image to its flash size
-// and skips the signature, which is what the bootloader verifies.
+// Not sha256sum of the file: firmware-hash.py hashes the image padded to flash size, minus the signature.
 function flashImage(bytes) {
   const image = Buffer.alloc(PAGE_SIZE * FW_PAGE_COUNT, 0xff);
   bytes.copy(image);
@@ -144,8 +126,7 @@ async function publishedChecksum(release, name) {
   return lines.find(([, entry]) => entry === name)?.[0];
 }
 
-// The version a device reports after an update is the one in the binary, so that is the version the
-// site compares against; the tag is only where it is looked up.
+// The version inside the binary is what a device reports, so it must equal the tag.
 async function mirrorLatest(kind, release) {
   const artifact = RELEASES[kind];
   const [asset] = assetIn(release, artifact.match);
@@ -191,8 +172,7 @@ async function syncFirmware() {
 
     carriers.push(release);
 
-    // release_notes.ts reads the changelog's first line as the release date and renders the rest as
-    // markdown, which is the shape keycard-shell-webapp kept on disk. Release bodies carry CRLF.
+    // release_notes.ts reads line 1 as the date and renders the rest as markdown; release bodies carry CRLF.
     notes.push({ version, changelog: `changelogs/${version}.md` });
     await write(`changelogs/${version}.md`, `${timestamp(release.published_at)}\n${(release.body ?? "").replace(/\r\n/g, "\n")}`);
   }
@@ -217,8 +197,7 @@ async function syncDatabase() {
       continue;
     }
 
-    // The version history page names the three source lists of every release, which eth-db commits
-    // beside the sources it fetched.
+    // eth-db commits manifest.txt at the tag, naming the three sources it fetched.
     const manifest = await text(`https://raw.githubusercontent.com/${repo}/${release.tag_name}/manifest.txt`).catch((err) => {
       console.warn(`${release.tag_name}: ${err.message}, skipped`);
       return null;
@@ -261,6 +240,7 @@ await rm(MEDIA, { recursive: true, force: true });
 const firmware = await syncFirmware();
 const database = await syncDatabase();
 
+// Written last, so a page can never point at an artifact that was not verified.
 await writeJson("get-firmware.json", { fw_path: RELEASES.firmware.file, version: firmware.current.version, hash: firmware.current.hash });
 await writeJson("get-db.json", { db_path: RELEASES.database.file, hash: database.current.hash, version: database.current.version });
 await writeJson("get-firmwares.json", firmware.notes);

@@ -55,8 +55,7 @@ async function handleDBVersionHistory() : Promise<void> {
     const dbVersionHistory = await fetch(mediaPrefix.value + "get-dbs.json").then((r) => r.json());
 
     for (let i = 0; i < dbVersionHistory.length; i++) {
-        // zip_path is the release's own download URL. A clicked download needs no same-origin copy,
-        // only the bytes that are flashed onto the device do.
+        // zip_path is the release's own URL; a clicked download needs no same-origin copy.
         await renderDBVersionHistoryUI(dbVersionHistory[i], i, dbVersionHistory[i]["zip_path"]);
     }
 }

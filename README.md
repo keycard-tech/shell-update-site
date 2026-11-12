@@ -59,9 +59,7 @@ Publishing is a GitHub Actions workflow: `.github/workflows/sync-and-deploy.yml`
    concatenate exactly as before.
 2. **`type="module"` on the script tags.** webpack emitted IIFE scripts, Parcel emits ES modules; both
    run after the document has parsed, which is what the page scripts assume. Nothing is needed for the
-   `Buffer` that webpack's `ProvidePlugin` gave `@choppu/shelljs`: Parcel's node emulation binds it in
-   every module that references it, which is worth checking in the built bundle rather than assuming in
-   either direction.
+   `Buffer` webpack's `ProvidePlugin` gave `@choppu/shelljs`: Parcel binds it per module on its own.
 3. **Only the current artifacts are mirrored.** `media/firmware.bin` and `media/db.bin` are
    overwritten by each release. Upstream kept a directory per version under `MEDIA_ROOT`, but only the
    release notes need history, so `media/changelogs/<version>.md` is the one thing kept per version.
@@ -82,6 +80,8 @@ Publishing is a GitHub Actions workflow: `.github/workflows/sync-and-deploy.yml`
    the trailing signature for the database) and must carry, inside the binary, the version its release
    is tagged with — the four version bytes at offset 588 + 64 for firmware, the `0x4532` header and its
    `uint32` version for the database. A mismatch stops the build, so the previous site stays live.
+7. **The verify page is not ported.** Upstream served `device:verify-index` from a backend this site has
+   no stand-in for, so its link still goes to `https://shell.keycard.tech/verify/` and leaves the site.
 
 ## Layout
 

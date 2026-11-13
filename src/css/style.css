@@ -2651,7 +2651,8 @@ body {
 
     .keycard_shell__content-container {
         width: 1504px;
-        margin: 136px auto 40px auto;
+        margin-inline: auto;
+        margin-bottom: 40px;
         padding: 0 24px;
     }
 
@@ -2717,7 +2718,7 @@ body {
     --hub-orange: #FF6400;
     --hub-orange-soft: rgba(255, 100, 0, .14);
     --hub-font: 'Schibsted Grotesk', var(--text-font-inter);
-    /* type scale: 14 / 16 / 18 / 28 / 32 / 44 / 64 */
+    /* type scale: 14 / 16 / 18 / 28 / 32 / 44 / 52 */
     width: 100%;
     color: var(--hub-text-1);
     font-family: var(--hub-font);
@@ -2726,14 +2727,17 @@ body {
 .hub-h1, .hub-h2, .hub-tool-title, .hub-dyk-title { font-family: var(--hub-font); font-weight: 700; letter-spacing: -0.03em; color: var(--hub-text-1); text-wrap: balance; }
 .hub-lead, .hub-tool-text, .hub-dyk-lead, .hub-point-text, .hub-guide-text { text-wrap: pretty; }
 
-/* hero: a small product shot beside the title */
-.hub-hero { display: flex; align-items: center; gap: 40px; padding: 48px 0 8px; }
-.hub-hero-img { flex: 0 0 auto; height: 232px; width: auto; mix-blend-mode: lighten; }
-.hub-h1 { margin: 0; font-size: 64px; line-height: 1.05; }
-.hub-lead { margin: 16px 0 0; max-width: 34ch; font-size: 20px; line-height: 1.5; color: var(--hub-text-2); }
+/* hero: the Shell centred, dissolved across its vertical middle by an elliptical mask, and the title pulled into that fade.
+   The mask reaches full transparency at 66% of the image height, so the title overlap has to stay under 34% of it. */
+.hub-hero { --hero-img: clamp(320px, 30vw, 450px); display: flex; flex-direction: column; align-items: center; padding: 8px 0 0; text-align: center; }
+.hub-hero-img { height: var(--hero-img); width: auto; -webkit-mask-image: radial-gradient(62% 40% at 50% 26%, #000 45%, transparent 100%); mask-image: radial-gradient(62% 40% at 50% 26%, #000 45%, transparent 100%); }
+.hub-hero-text { margin-top: calc(var(--hero-img) * -.34); }
+.hub-h1 { margin: 0; font-size: 52px; line-height: 1.05; }
+.hub-lead { margin: 16px auto 0; max-width: 42ch; font-size: 20px; line-height: 1.5; color: var(--hub-text-2); }
 
-/* sections, 104px apart */
+/* sections, 104px apart; the first one comes closer so Verify and Update sit above the fold */
 .hub-section { margin-top: 104px; }
+.hub-hero + .hub-section { margin-top: 64px; }
 .hub-h2 { margin: 0 0 32px; font-size: 44px; line-height: 1.1; }
 
 /* the two tools: the strongest objects on the page */
@@ -2768,9 +2772,8 @@ body {
 .hub a:focus-visible { outline: 2px solid var(--hub-orange); outline-offset: 4px; }
 
 @media (max-width: 959px) {
-    .hub-hero { flex-direction: column; align-items: flex-start; gap: 24px; padding-top: 24px; }
-    .hub-hero-img { height: 180px; }
-    .hub-h1 { font-size: 48px; }
+    .hub-hero { --hero-img: 320px; }
+    .hub-h1 { font-size: 42px; }
     .hub-lead { font-size: 18px; }
     .hub-section { margin-top: 72px; }
     .hub-h2 { font-size: 34px; margin-bottom: 24px; }
@@ -2778,7 +2781,7 @@ body {
     .hub-points, .hub-guides { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
 }
 @media (max-width: 600px) {
-    .hub-h1 { font-size: 44px; }
+    .hub-h1 { font-size: 36px; }
     .hub-tool { padding: 24px; }
     .hub-dyk { padding: 24px 20px; }
     .hub-tool-title { font-size: 24px; }

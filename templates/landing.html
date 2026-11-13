@@ -1,76 +1,38 @@
 {% extends './base.html' %}
 {% load static %}
-{% block title %}Home{% endblock title %}
+{% block title %}Owner's Hub{% endblock title %}
 {% block content %}
-    <div class="keycard_shell__landing-img-container">
-        <img src="{% static 'keycard_shell/img/landing.png' %}" alt="Landing" class="keycard_shell__landing-img">
-    </div>
-    <div class="keycard_shell__page-heading-container">
-        <h1 class="keycard_shell__page-heading" id="release-notes-page-heading">Your Keycard Shell</h1>
-    </div> 
-    <div class="keycard_shell__page-top-container">
-        <div class="keycard_shell__page-top-text-container">
-            <span class="keycard_shell__page-top-text">Welcome to your Keycard Shell — the open, secure, and modular hardware wallet.</span>
+<div class="hub">
+    <section class="hub-hero">
+        <img class="hub-hero-img" src="{% static 'keycard_shell/img/owners-hub-shell.webp' %}" alt="Keycard Shell">
+        <div class="hub-hero-text">
+            <h1 class="hub-h1">Owner's Hub</h1>
+            <p class="hub-lead">Check that your Shell is genuine, update it, and find the guides you need.</p>
         </div>
-    </div>
-    <div class="keycard_shell__landing-links-container">
-        <div class="keycard_shell__landing-link-container">
-            <div class="keycard_shell__bottom-menu-header">
-                <h3 class="keycard_shell__h3">Quick start guide</h3>
-                <p class="keycard_shell__bottom-menu-prompt-text">Get started with Shell in a few simple steps</p>
-            </div>
-            <div class="keycard_shell__help-links">
-               <span class="keycard_shell__help-links-list-el"><a href="https://keycard.tech/start/shell" target="_blank" class="keycard_shell__help-link">Start using Shell</a></span>
-            </div>
+    </section>
+
+    <section class="hub-section">
+        <h2 class="hub-h2">Your Shell</h2>
+        <div class="hub-tools">
+            <a class="hub-tool" href="{% url 'device:verify-index' %}"><span class="hub-tool-title">Verify your device</span><span class="hub-tool-text">Make sure your Shell is genuine.</span><span class="keycard_shell__btn hub-tool-btn">Verify</span></a>
+            <a class="hub-tool" href="{% url 'db:update-index' %}"><span class="hub-tool-title">Update firmware and database</span><span class="hub-tool-text">Install the latest firmware and token updates.</span><span class="keycard_shell__btn hub-tool-btn">Update</span></a>
         </div>
-        <div class="keycard_shell__landing-link-container">
-            <div class="keycard_shell__bottom-menu-header">
-                <h3 class="keycard_shell__h3">Frequently asked questions</h3>
-                <p class="keycard_shell__bottom-menu-prompt-text">Find answers to common questions</p>
-            </div>
-            <div class="keycard_shell__help-links">
-               <span class="keycard_shell__help-links-list-el"><a href="https://keycard.tech/help/faq" target="_blank" class="keycard_shell__help-link">Learn more</a></span>
-            </div>
+        <aside class="hub-dyk">
+            <p class="hub-dyk-kicker">Did you know?</p>
+            <h3 class="hub-dyk-title">Verify and Update work without a Keycard server</h3>
+            <p class="hub-dyk-lead">These pages run in your browser. GitHub hosts them, and shell.keycard.tech points there by a DNS record. Keycard runs no server for them.</p>
+            <div class="hub-points"><div class="hub-point"><svg class="hub-point-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4.5l-3 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><h4 class="hub-point-title">Fully verifiable</h4><p class="hub-point-text">Every page and script is built from public code. Read it, or build it yourself and compare.</p><a class="hub-pill" href="https://github.com/keycard-tech/shell-update-site" target="_blank" rel="noopener">Source code on GitHub<svg class="hub-pill-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div><div class="hub-point"><svg class="hub-point-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.25" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="18" r="2.25" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="9" r="2.25" stroke="currentColor" stroke-width="1.5"/><path d="M6 8.25v7.5M18 11.25c0 3-3 3.75-6 3.75H8.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><h4 class="hub-point-title">Traceable deployment</h4><p class="hub-point-text">A public GitHub workflow builds and publishes each version. Every run and its log stay public.</p><a class="hub-pill" href="https://github.com/keycard-tech/shell-update-site/actions/workflows/sync-and-deploy.yml" target="_blank" rel="noopener">Every deployment, with logs<svg class="hub-pill-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div><div class="hub-point"><svg class="hub-point-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20V3.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 3.5v4h4M9.75 13.5l2 2 3.5-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><h4 class="hub-point-title">Protected by signatures</h4><p class="hub-point-text">The firmware, the database and the produced units list are signed. Your Shell and the Verify page refuse any file without a valid signature. The signing keys are never on this site.</p></div><div class="hub-point"><svg class="hub-point-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12c-2-2.6-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.4 5.5-4zm0 0c2 2.6 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.4-5.5 4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><h4 class="hub-point-title">Built to outlive us</h4><p class="hub-point-text">The code is open source, and Keycard does not host it. Anyone can mirror the site, and it works the same.</p></div></div>
+        </aside>
+    </section>
+
+    <section class="hub-section">
+        <h2 class="hub-h2">Guides and help</h2>
+        <div class="hub-guides">
+            <a class="hub-guide" href="https://keycard.tech/start/shell" target="_blank" rel="noopener"><span class="hub-guide-title">Quick start guide</span><span class="hub-guide-text">Get started with Shell in a few simple steps.</span></a>
+            <a class="hub-guide" href="https://keycard.tech/help/faq" target="_blank" rel="noopener"><span class="hub-guide-title">Frequently asked questions</span><span class="hub-guide-text">Find answers to common questions.</span></a>
+            <a class="hub-guide" href="https://keycard.tech/help" target="_blank" rel="noopener"><span class="hub-guide-title">Help with Shell and Keycard</span><span class="hub-guide-text">Explore detailed guides for Keycard and Shell.</span></a>
+            <a class="hub-guide" href="mailto:support@keycard.tech"><span class="hub-guide-title">Have questions?</span><span class="hub-guide-text">Contact our team or join the community.</span></a>
         </div>
-        <div class="keycard_shell__landing-link-container">
-            <div class="keycard_shell__bottom-menu-header">
-                <h3 class="keycard_shell__h3">Verify your device</h3>
-                <p class="keycard_shell__bottom-menu-prompt-text">Make sure your Shell is genuine</p>
-            </div>
-            <div class="keycard_shell__help-links">
-               <span class="keycard_shell__help-links-list-el"><a href="{% url 'device:verify-index' %}" target="_blank" class="keycard_shell__help-link">Verify</a></span>
-            </div>
-        </div>
-        <div class="keycard_shell__landing-link-container">
-            <div class="keycard_shell__bottom-menu-header">
-                <h3 class="keycard_shell__h3">Update firmware and database</h3>
-                <p class="keycard_shell__bottom-menu-prompt-text">Install the latest firmware and token updates</p>
-            </div>
-            <div class="keycard_shell__help-links">
-               <span class="keycard_shell__help-links-list-el"><a href="{% url 'db:update-index' %}" target="_blank" class="keycard_shell__help-link">Update</a></span>
-            </div>
-        </div>
-        <div class="keycard_shell__landing-link-container">
-            <div class="keycard_shell__bottom-menu-header">
-                <h3 class="keycard_shell__h3">Help with Shell and Keycard</h3>
-                <p class="keycard_shell__bottom-menu-prompt-text">Explore Keycard and Shell detailed guides</p>
-            </div>
-            <div class="keycard_shell__help-links">
-               <span class="keycard_shell__help-links-list-el"><a href="https://keycard.tech/help" target="_blank" class="keycard_shell__help-link">Learn more</a></span>
-            </div>
-        </div>
-        <div class="keycard_shell__landing-link-container">
-            <div class="keycard_shell__bottom-menu-header">
-                <h3 class="keycard_shell__h3">Have questions?</h3>
-                <p class="keycard_shell__bottom-menu-prompt-text">Contact our team or join the community for support</p>
-            </div>
-            <div class="keycard_shell__help-links">
-                <ul class="keycard_shell__help-links-list">
-                    <li class="keycard_shell__help-links-list-el"><a href="mailto:support@keycard.tech" class="keycard_shell__help-link">Get in touch</a></li>
-                    <li class="keycard_shell__help-links-list-el"><a href="https://discord.com/invite/uJAXk7jFhZ" target="_blank"  class="keycard_shell__help-link"><img src="{% static 'keycard_shell/img/discord.svg' %}" class="keycard_shell__help-link-img" alt="Discord"></a></li>
-                    <li class="keycard_shell__help-links-list-el"><a href="https://x.com/Keycard_" target="_blank" class="keycard_shell__help-link"><img src="{% static 'keycard_shell/img/twitter.svg' %}" class="keycard_shell__help-link-img" alt="Discord"></a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
+    </section>
+</div>
 {% endblock %}

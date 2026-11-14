@@ -27,19 +27,10 @@
                         <img src="{% static 'keycard_shell/img/desktop.svg' %}" alt="Desktop only" class="keycard_shell__update_desktop_only-img">
                         <span class="keycard_shell__update_desktop_only-text">Only for Desktop</span>
                     </span>
-                    <a href="{% url 'db:air-gapped-update' %}" class="keycard_shell_air-gapped-link-mobile">
-                        <img  class="keycard_shell_air-gapped-link-img" src="{% static 'keycard_shell/img/air-gapped.svg' %}" alt="Device">
-                        <span class="keycard_shell_air-gapped-link-text">Update in air-gapped mode</span>
-                    </a>
                 </div>
                 <div class="keycard_shell__btn-container" id="keycard_shell__update-start-button">
                     <input id="start-screen-btn" class="keycard_shell__btn keycard_shell__update-btn-inline" type="button" value="Update">
                     <span class="keycard_shell__update-hint">Works in Chromium-based browsers: Chrome, Edge or Opera.</span>
-                    <span class="keycard_shell_or">or</span>
-                    <a href="{% url 'db:air-gapped-update' %}" class="keycard_shell_air-gapped-link">
-                        <img  class="keycard_shell_air-gapped-link-img" src="{% static 'keycard_shell/img/air-gapped.svg' %}" alt="Device">
-                        <span class="keycard_shell_air-gapped-link-text">Update in air-gapped mode</span>
-                    </a>
                 </div>
             </div>
         </div>
